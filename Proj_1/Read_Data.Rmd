@@ -1,0 +1,60 @@
+---
+title: "Project1"
+author: "Peter"
+date: "1/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project 1
+
+Indlæser data
+```{r}
+library(zoo)
+
+
+
+data <- get(load("armdata.Rdata"))[5][[1]]
+x <- data[[1]][[2]]
+person <- 10
+rep <- 10
+x <- c()
+y <- c()
+z <- c()
+for (p in 1:person){
+  for (r in 1:rep){
+    
+    longitude <- data[[p]][[r]][,1]
+    x <- cbind(x,longitude)
+  }
+}
+for (p in 1:person){
+  for (r in 1:rep){
+    
+    transversal <- data[[p]][[r]][,2]
+    y <- cbind(y,transversal)
+  }
+}
+for (p in 1:person){
+  for (r in 1:rep){
+    
+    vertical <- data[[p]][[r]][,3]
+    z <- cbind(z,vertical)
+  }
+}
+
+```
+
+
+
+```{r}
+svd <- svd(na.locf(x, fromLast = T))
+v <- svd$v
+PC <- x %*% t(v)
+
+x
+```
+
