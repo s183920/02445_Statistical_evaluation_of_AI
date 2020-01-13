@@ -45,16 +45,26 @@ for (p in 1:person){
     z <- cbind(z,vertical)
   }
 }
+x <- t(na.locf(x, fromLast = T))
+y <- t(na.locf(y, fromLast = T))
+z <- t(na.locf(z, fromLast = T))
+colnames <- c("persons","reps", paste0("x_", 1:100),paste0("y_", 1:100),paste0("z_", 1:100))
+rownames <- c(rep("person1", 10),rep("person2", 10),rep("person3", 10),rep("person4", 10),rep("person5", 10),rep("person6", 10),rep("person7", 10),rep("person8", 10),rep("person9", 10),rep("person10", 10))
+reps <- rep(1:10,10)
+data_wide <- as.data.frame(cbind(rownames,reps,x,y,z))
 
+names(data_wide) <- colnames
 ```
 
 
 
 ```{r}
-svd <- svd(na.locf(x, fromLast = T))
-v <- svd$v
-PC <- x %*% t(v)
 
-x
+```
+
+```{r}
+svd <- svd(data_wide[,3:302])
+sum(data_wide[,3:302] >100)
+data_wide[,3:302]
 ```
 
