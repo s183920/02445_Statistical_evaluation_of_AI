@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(zoo)
 library(magrittr)
+library(reticulate)
 ```
 
 # Indlæser data
@@ -64,5 +65,31 @@ PC <- x %*% t(v)
 
 ```{r}
 plot(pers1[,1], pers1[,3])
+
+pc <- prcomp(pers1, center = T, scale. = F)
+summary(pc)
+pc
+pc$x
+
+#plot(pc[,1], pc[,2])
+
 ```
+
+
+```{r}
+library(plotly)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
