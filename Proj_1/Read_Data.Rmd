@@ -2,7 +2,10 @@
 title: "Project1"
 author: "Peter"
 date: "1/12/2020"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -58,8 +61,8 @@ reps <- rep(1:10,10)
 data_wide <- as.data.frame(cbind(x,y,z), row.names = 1:100)
 names(data_wide) <- colnames
 
-data_wide <- cbind(rownames,reps,data_wide)
-data_wide
+data_wide <- cbind(persons,reps,data_wide)
+head(data_wide)
 ```
 
 ## Rename data
@@ -75,24 +78,75 @@ for (per in c(1:length(data))) {
 }
 ```
 
+## Plots
+
+```{r}
+library(rgl)
+#cbind(x,y,z)
+plot3d(data$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+
+```
 
 
 # PCA - test
 
 ```{r}
 
+#str(data_wide[,-c(1,2)])
+pca <- prcomp(x = data_wide[,-c(1,2)], scale. = T, center = T)
+summary(pca)
+
+plot(pca$x, col = data_wide$persons)
 ```
+
+# Machine learning
+
+Methods
 
 ```{r}
-data_wide
+names(getModelInfo())
 ```
 
 
 
+#KNN
+
+```{r}
+library(class)
+set.seed(235)
+
+ind <- sample(100)
+knn_data <- data_wide[, -c(1,2)]
+
+train_set <- knn_data[ind[1:80],]
+test_set <- knn_data[ind[81:100],]
+train_labels <- data_wide$persons[ind[1:80]]
+test_labels <- data_wide$persons[ind[81:100]]
+
+#knn_data <- data_wide[, -c(1,2)]
+mean(knn(train_set, test_set, train_labels, k = 10) == test_labels)
+
+```
 
 
+## leave one out
 
+```{r}
+library(caret)
+data_wide[, -c(1,2)] <- scale(data_wide[, -c(1,2)])
 
+trControl <- trainControl(method  = "LOOCV",
+                          number  = 5)
+
+fit <- train(persons ~ .,
+             method     = "knn",
+             tuneGrid   = expand.grid(k = 1:10),
+             trControl  = trControl,
+             metric     = "Accuracy",
+             data       = data_wide[,-2])
+
+fit
+```
 
 
 
