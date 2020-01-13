@@ -7,18 +7,21 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+
+# load packages
+
+library(zoo)
+library(magrittr)
 ```
 
-# Project 1
-
-Indlæser data
+# Indlæser data
 ```{r}
-library(zoo)
 
 
 
 data <- get(load("armdata.Rdata"))[5][[1]]
-x <- data[[1]][[2]]
+pers1 <- data[[1]][[2]]
 person <- 10
 rep <- 10
 x <- c()
@@ -48,13 +51,18 @@ for (p in 1:person){
 
 ```
 
-
+# PCA - test
 
 ```{r}
 svd <- svd(na.locf(x, fromLast = T))
 v <- svd$v
 PC <- x %*% t(v)
 
-x
+#x
+```
+
+
+```{r}
+plot(pers1[,1], pers1[,3])
 ```
 
