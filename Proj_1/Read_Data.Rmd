@@ -7,18 +7,22 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+
+# load packages
+
+library(zoo)
+library(magrittr)
+library(reticulate)
 ```
 
-# Project 1
-
-Indlæser data
+# Indlæser data
 ```{r}
-library(zoo)
 
 
 
 data <- get(load("armdata.Rdata"))[5][[1]]
-x <- data[[1]][[2]]
+pers1 <- data[[1]][[2]]
 person <- 10
 rep <- 10
 x <- c()
@@ -56,7 +60,22 @@ data_wide <- as.data.frame(cbind(rownames,reps,x,y,z))
 names(data_wide) <- colnames
 ```
 
+## Rename data
 
+```{r}
+names(data) <- paste0("person_", 1:10)
+ 
+for (per in c(1:length(data))) {
+  names(data[[per]]) <- paste0("repetion_", 1:10)
+  for (rep in c(1:length(data[[per]]))) {
+    colnames(data[[per]][[rep]]) <- c("x", "y", "z")
+  }
+}
+```
+
+
+
+# PCA - test
 
 ```{r}
 
@@ -67,4 +86,16 @@ svd <- svd(data_wide[,3:302])
 sum(data_wide[,3:302] >100)
 data_wide[,3:302]
 ```
+
+
+
+
+
+
+
+
+
+
+
+
 
