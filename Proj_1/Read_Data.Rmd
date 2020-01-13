@@ -12,15 +12,12 @@ knitr::opts_chunk$set(echo = TRUE)
 # load packages
 
 library(zoo)
-library(magrittr)
-library(reticulate)
+'library(magrittr)
+library(reticulate)'
 ```
 
 # Indlæser data
 ```{r}
-
-
-
 data <- get(load("armdata.Rdata"))[5][[1]]
 pers1 <- data[[1]][[2]]
 person <- 10
@@ -32,32 +29,37 @@ for (p in 1:person){
   for (r in 1:rep){
     
     longitude <- data[[p]][[r]][,1]
-    x <- cbind(x,longitude)
+    x <- cbind(x,data[[p]][[r]][,1])
   }
 }
 for (p in 1:person){
   for (r in 1:rep){
     
     transversal <- data[[p]][[r]][,2]
-    y <- cbind(y,transversal)
+    y <- cbind(y,data[[p]][[r]][,2])
   }
 }
 for (p in 1:person){
   for (r in 1:rep){
     
     vertical <- data[[p]][[r]][,3]
-    z <- cbind(z,vertical)
+    z <- cbind(z,data[[p]][[r]][,3])
   }
 }
+
 x <- t(na.locf(x, fromLast = T))
 y <- t(na.locf(y, fromLast = T))
 z <- t(na.locf(z, fromLast = T))
-colnames <- c("persons","reps", paste0("x_", 1:100),paste0("y_", 1:100),paste0("z_", 1:100))
-rownames <- c(rep("person1", 10),rep("person2", 10),rep("person3", 10),rep("person4", 10),rep("person5", 10),rep("person6", 10),rep("person7", 10),rep("person8", 10),rep("person9", 10),rep("person10", 10))
-reps <- rep(1:10,10)
-data_wide <- as.data.frame(cbind(rownames,reps,x,y,z))
 
+colnames <- c( paste0("x_", 1:100),paste0("y_", 1:100),paste0("z_", 1:100))
+persons <- c(rep("person1", 10),rep("person2", 10),rep("person3", 10),rep("person4", 10),rep("person5", 10),rep("person6", 10),rep("person7", 10),rep("person8", 10),rep("person9", 10),rep("person10", 10))
+reps <- rep(1:10,10)
+
+data_wide <- as.data.frame(cbind(x,y,z), row.names = 1:100)
 names(data_wide) <- colnames
+
+data_wide <- cbind(rownames,reps,data_wide)
+data_wide
 ```
 
 ## Rename data
@@ -82,9 +84,7 @@ for (per in c(1:length(data))) {
 ```
 
 ```{r}
-svd <- svd(data_wide[,3:302])
-sum(data_wide[,3:302] >100)
-data_wide[,3:302]
+data_wide
 ```
 
 
