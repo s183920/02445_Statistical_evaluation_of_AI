@@ -52,6 +52,21 @@ for (p in 1:person){
 
 ```
 
+## Rename data
+
+```{r}
+names(data) <- paste0("person_", 1:10)
+ 
+for (per in c(1:length(data))) {
+  names(data[[per]]) <- paste0("repetion_", 1:10)
+  for (rep in c(1:length(data[[per]]))) {
+    colnames(data[[per]][[rep]]) <- c("x", "y", "z")
+  }
+}
+```
+
+
+
 # PCA - test
 
 ```{r}
@@ -62,25 +77,6 @@ PC <- x %*% t(v)
 #x
 ```
 
-
-```{r}
-plot(pers1[,1], pers1[,3])
-
-pc <- prcomp(pers1, center = T, scale. = F)
-summary(pc)
-pc
-pc$x
-
-#plot(pc[,1], pc[,2])
-
-```
-
-
-```{r}
-library(plotly)
-
-
-```
 
 
 
