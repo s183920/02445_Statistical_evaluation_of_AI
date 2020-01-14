@@ -205,10 +205,12 @@ for (i in c(1:K_fold)){
 
   train_set <- data_exp5[train_index,]
   test_set <- data_exp5[test_index,]
-  
+  fit <- multinom(data = data_KNN[train_index,], formula = Person ~ X + Y  + Z+ as.numeric(Time))
+  predictions <- predict(fit, data_KNN[c(4:7)][test_index,])
+  print(  mean(predictions == test_set$Person ) )
   for (k in K){
     
-    E <- mean(knn(train_set[,c(3:7)], test_set[,c(3:7)], train_set$Person, k = k) != test_set$Person)
+    E <- mean(knn(train_set[,c(3:7)], test_set[,c(3:7)], train_set$Person, k = k) == test_set$Person)
     errors[i,k] <- E
     
     
@@ -352,13 +354,12 @@ summary(model)
 
 
 ```{r}
-model <- neuralnet(data = data_wide[,-2][train_index,], formula = rownames ~ ., hidden = 10, linear.output = F, act.fct = "logistic")
-summary(model)
-model$net.result
-nrow(model$net.result[[1]])
-results <- compute(model, data_wide[colnames][test_index,])
-apply(results$net.result,1, which.max)
-data_wide[]
+library(nnet)
+fit <- multinom(data = data_exp5, formula = Person ~ X + Y  + Z+ as.numeric(Time))
+summary(fit)
+predict(fit , head(data_exp5[,c(4:7)], 100))
+model %>% predict(test.data)
+?multinom
 ```
 
 
@@ -375,9 +376,10 @@ data_wide[]
 # Punkt 2 - Statistik
 Test om der er signifikant effekt af 'experiment' på de resulterende kurver.
 ```{r}
-model_anova <- lm(data = data_long, formula = Y ~ Experiment * Person)
+model_anova <- lm(data = data_long, formula = Y ~ Experiment)
 summary(model_anova)
 anova(model_anova)
+
 ```
 
 
