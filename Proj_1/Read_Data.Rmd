@@ -16,6 +16,10 @@ library(zoo)
 library(reticulate)'
 ```
 
+
+
+
+
 # Indlæser data
 ```{r}
 data <- get(load("armdata.Rdata"))[5][[1]]
@@ -62,6 +66,52 @@ data_wide <- cbind(rownames,reps,data_wide)
 data_wide
 mean(sample(rownames,100) == rownames)
 ```
+## Alternative Data Load
+```{r}
+data <- get(load("armdata.Rdata"))
+persons <- 10
+repetitions <- 10
+experiements <- 16
+time <- 100
+data_long <- c()
+for (i in 1:experiements){
+  print(i)
+  exp <- data[i][[1]]
+
+  for (j in 1:persons){
+    pers <- exp[[j]]
+    
+    for (k in 1:repetitions){
+      rep <- pers[[k]]
+      
+      data_long <- rbind(data_long, (cbind(rep(i,100),rep(j,100), rep(k,100), c(1:100) , rep)))
+      
+    }
+    
+  }
+
+}
+
+data_long <- as.data.frame(data_long)
+names(data_long) <- c("Experiment", "Person", "Repetition", "Time", "X", "Y", "Z")
+data_long$Experiment <- as.factor(data_long$Experiment)
+data_long$Person <- as.factor(data_long$Person)
+data_long$Repetition <- as.factor(data_long$Repetition)
+data_long$Time <- as.factor(data_long$Time)
+
+data_exp5 <- subset(data_long, Experiment == 5)
+data_exp5
+which(is.na(data_exp5), arr.ind = T)
+
+data_exp5[8001,]
+
+data_exp5 <- na.locf(data_exp5)
+
+```
+
+
+
+
 
 ## Rename data
 
@@ -100,8 +150,8 @@ svd$d
 
 ```{r}
 library(class)
-s <- sample(100)
-
+s <- sample(10000)
+nrow(data_exp5)
 N <- 100
 K <- c(1:20)
 errors <- matrix(rep(NA, N*length(K)), nrow = N)
@@ -109,12 +159,12 @@ for (i in 1:N){
   print(paste0("Fold_", i))
   train_index <- s[-i]
   test_index <- s[i]
-  train_set <- data_wide[train_index,]
-  test_set <- data_wide[test_index,]
+  train_set <- data_exp5[train_index,]
+  test_set <- data_exp5[test_index,]
   
   for (k in K){
     
-    E <- sum(knn(train_set[colnames], test_set[colnames], train_set$rownames, k = k) != test_set$rownames)
+    E <- sum(knn(train_set[,c(3:6)], test_set[,c(3:6)], train_set$Person, k = k) != test_set$Person)
     errors[i,k] <- E
     
     
@@ -137,7 +187,7 @@ plot(m)
 ```{r}
 library(mclust, quietly=TRUE)
 
-G <- Mclust(data_wide[colnames], G = 10)
+G <- Mclust(data2_exp5, G = 10)
 G$classification
 G$classification
 summary(G)
