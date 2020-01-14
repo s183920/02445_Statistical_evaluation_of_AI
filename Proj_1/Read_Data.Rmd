@@ -205,9 +205,6 @@ for (i in c(1:K_fold)){
 
   train_set <- data_exp5[train_index,]
   test_set <- data_exp5[test_index,]
-  fit <- multinom(data = data_KNN[train_index,], formula = Person ~ X + Y  + Z+ as.numeric(Time))
-  predictions <- predict(fit, data_KNN[c(4:7)][test_index,])
-  print(  mean(predictions == test_set$Person ) )
   for (k in K){
     
     E <- mean(knn(train_set[,c(3:7)], test_set[,c(3:7)], train_set$Person, k = k) == test_set$Person)
@@ -249,122 +246,18 @@ plot(m)
 ```
 
 
-```
-
-
-
-
-
-
-
-
-
-
-# Gaussian Mixture Model
-
-```{r}
-library(mclust, quietly=TRUE)
-
-## leave one out
-
-```{r}
-library(caret)
-data_wide[, -c(1,2)] <- scale(data_wide[, -c(1,2)])
-
-trControl <- trainControl(method  = "LOOCV",
-                          number  = 5)
-
-fit <- train(persons ~ .,
-             method     = "knn",
-             tuneGrid   = expand.grid(k = 1:10),
-             trControl  = trControl,
-             metric     = "Accuracy",
-             data       = data_wide[,-2])
-
-fit
-G <- Mclust(data_wide[colnames], G = 10)
-G$classification
-G$classification
-summary(G)
-G$classification
-```
-
-
-
-
-
-
-
-
-
-
-
-# Neural Network
-```{r}
-library(neuralnet)
-```
-
-
-```{r}
-model <- neuralnet(data = data_wide[,-2], formula = rownames ~ ., hidden = 5)
-summary(model)
-plot(model)
-model$result.matrix
-model$model.list
-predictions <- predict(model, data_wide[colnames])
-apply(predictions, 1, which.max)
-```
-ANN - Cross validation
-
-```{r}
-data_NN <- data_exp5[,-1]
-data_NN$Time <- as.numeric(data_NN$Time)
-
-N <- nrow(data_NN)
-K_fold <- 10
-hidden <- c(1)
-random_index <- split(sample(c(1:N),N), c(1:K_fold))
-errors <- matrix(rep(NA,K_fold*length(hidden)), nrow = length(hidden))
-
-true_class <- data_NN$Person
-
-accuracy <- rep(NA, K_fold)
-
-for (i in c(1:K_fold)){
-    print(i)
-    f <- c(1:K_fold)[-i]
-    train_index <- Reduce(c,random_index[f])
-    test_index <- Reduce(c,random_index[i])
-    train_set <- data_NN[train_index,]
-    test_set <- data_NN[test_index,]
-      
-    print(nrow(train_set))
-    print(sum(is.na(train_set)))
-    model <- neuralnet(data = train_set, formula = Person ~   X + Y + Z, hidden = 1,                                          linear.output = F, act.fct = "logistic")
-    print(i)
-    results <- compute(model, test_set[,-2])
-    acc <- mean(apply(results$net.result, 1, which.max) == true_class[test_index])
-    accuracy[i] <- acc
-}
-mean(accuracy)
-model <- neuralnet(data = train_set[,-2], formula = Person ~ X + Y + Z, hidden = 1,                                          linear.output = F, act.fct = "logistic", rep = 10)
-train_set[,-2]
-summary(model)
-```
 
 
 ```{r}
 library(nnet)
-fit <- multinom(data = data_exp5, formula = Person ~ X + Y  + Z+ as.numeric(Time))
-summary(fit)
-predict(fit , head(data_exp5[,c(4:7)], 100))
-model %>% predict(test.data)
-?multinom
+fit <- multinom(data = data_wide[-2], formula = persons ~ .)
 ```
 
 
-```{r}
-```
+
+
+
+
 
 
 
@@ -376,9 +269,20 @@ model %>% predict(test.data)
 # Punkt 2 - Statistik
 Test om der er signifikant effekt af 'experiment' på de resulterende kurver.
 ```{r}
-model_anova <- lm(data = data_long, formula = Y ~ Experiment)
+
+par(mfrow = c(1,3))
+boxplot(data_long$X ~ data_long$Experiment)
+boxplot(data_long$Y ~ data_long$Experiment)
+boxplot(data_long$Z ~ data_long$Experiment)
+
+
+model_anova <- aov(data = data_long, formula = X ~ Experiment )
 summary(model_anova)
-anova(model_anova)
+summary.lm(model_anova)
+
+?pairwise.t.test
+
+TukeyHSD(model_anova)
 
 ```
 
