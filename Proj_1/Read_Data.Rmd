@@ -24,6 +24,7 @@ library(reticulate)'
 
 
 # Indlæser data
+Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
 ```{r}
 data <- get(load("armdata.Rdata"))[5][[1]]
 pers1 <- data[[1]][[2]]
@@ -68,7 +69,9 @@ names(data_wide) <- colnames
 data_wide <- cbind(persons,reps,data_wide)
 head(data_wide)
 ```
+
 ## Alternative Data Load
+Indlæser data som en 'lang' matrix med 7 kolonner - En med experiment, en med person, en med repition, en med tid og tre med X Y Z.
 ```{r}
 data <- get(load("armdata.Rdata"))
 persons <- 10
@@ -105,10 +108,10 @@ data_exp5 <- subset(data_long, Experiment == 5)
 data_exp5
 which(is.na(data_exp5), arr.ind = T)
 
-data_exp5[8001,]
+
 
 data_exp5 <- na.locf(data_exp5)
-
+write.csv(data_exp5, "Data_exp5.csv")
 ```
 
 
@@ -118,7 +121,7 @@ data_exp5 <- na.locf(data_exp5)
 ## Rename data
 
 ```{r}
-names(data) <- paste0("person_", 1:10)
+names(data_wide) <- paste0("person_", 1:10)
  
 for (per in c(1:length(data))) {
   names(data[[per]]) <- paste0("repetion_", 1:10)
@@ -166,38 +169,63 @@ ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = as.factor(w))) + geom
 svd$d
 ```
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Cross - Validation KNN
 
 ```{r}
 library(class)
+data_KNN <- data_exp5
 s <- sample(10000)
 nrow(data_exp5)
-N <- 100
+N <- nrow(data_KNN)
+K_fold <- 50
 K <- c(1:20)
-errors <- matrix(rep(NA, N*length(K)), nrow = N)
-for (i in 1:N){
-  print(paste0("Fold_", i))
-  train_index <- s[-i]
-  test_index <- s[i]
+errors <- matrix(rep(NA, K_fold * length(K)), nrow = K_fold)
+
+
+random_index <- split(sample(c(1:N),N), c(1:K_fold))
+ 
+for (i in c(1:K_fold)){
+  print(i)
+  f <- c(1:K_fold)[-i]
+  train_index <- Reduce(c,random_index[f])
+  test_index <- Reduce(c,random_index[i])
+
   train_set <- data_exp5[train_index,]
   test_set <- data_exp5[test_index,]
   
   for (k in K){
     
-    E <- sum(knn(train_set[,c(3:6)], test_set[,c(3:6)], train_set$Person, k = k) != test_set$Person)
+    E <- mean(knn(train_set[,c(3:7)], test_set[,c(3:7)], train_set$Person, k = k) != test_set$Person)
     errors[i,k] <- E
     
     
   }
   
-  
-  
-  
+
 }
 
 #KNN
+apply(errors,2,mean)
+```
+
 
 ```{r}
+
+
+
 library(class)
 set.seed(235)
 
@@ -211,14 +239,24 @@ test_labels <- data_wide$persons[ind[81:100]]
 
 #knn_data <- data_wide[, -c(1,2)]
 mean(knn(train_set, test_set, train_labels, k = 10) == test_labels)
-
-```
 m <- apply(errors, 2, mean)
 which.min(m)
 m
 plot(m)
 
 ```
+
+
+```
+
+
+
+
+
+
+
+
+
 
 # Gaussian Mixture Model
 
@@ -249,10 +287,23 @@ summary(G)
 G$classification
 ```
 
+
+
+
+
+
+
+
+
+
+
 # Neural Network
 ```{r}
 library(neuralnet)
+```
 
+
+```{r}
 model <- neuralnet(data = data_wide[,-2], formula = rownames ~ ., hidden = 5)
 summary(model)
 plot(model)
@@ -260,29 +311,47 @@ model$result.matrix
 model$model.list
 predictions <- predict(model, data_wide[colnames])
 apply(predictions, 1, which.max)
+```
+ANN - Cross validation
 
+```{r}
+data_NN <- data_exp5[,-1]
+data_NN$Time <- as.numeric(data_NN$Time)
 
-N <- 100
-K_fold <- 100
-
+N <- nrow(data_NN)
+K_fold <- 10
+hidden <- c(1)
 random_index <- split(sample(c(1:N),N), c(1:K_fold))
-errors <- matrix(rep(0,K_fold*n), nrow = n)
-true_class <- sort(rep(1:10,10))
-true_class
+errors <- matrix(rep(NA,K_fold*length(hidden)), nrow = length(hidden))
+
+true_class <- data_NN$Person
+
 accuracy <- rep(NA, K_fold)
+
 for (i in c(1:K_fold)){
+    print(i)
     f <- c(1:K_fold)[-i]
     train_index <- Reduce(c,random_index[f])
     test_index <- Reduce(c,random_index[i])
-    
-    model <- neuralnet(data = data_wide[,-2][train_index,], formula = rownames ~ ., hidden = 20, linear.output = F, act.fct = "logistic")
-    results <- compute(model, data_wide[colnames][test_index,])
-    print(apply(results$net.result, 1, which.max))
+    train_set <- data_NN[train_index,]
+    test_set <- data_NN[test_index,]
+      
+    print(nrow(train_set))
+    print(sum(is.na(train_set)))
+    model <- neuralnet(data = train_set, formula = Person ~   X + Y + Z, hidden = 1,                                          linear.output = F, act.fct = "logistic")
+    print(i)
+    results <- compute(model, test_set[,-2])
     acc <- mean(apply(results$net.result, 1, which.max) == true_class[test_index])
     accuracy[i] <- acc
 }
 mean(accuracy)
+model <- neuralnet(data = train_set[,-2], formula = Person ~ X + Y + Z, hidden = 1,                                          linear.output = F, act.fct = "logistic", rep = 10)
+train_set[,-2]
+summary(model)
+```
 
+
+```{r}
 model <- neuralnet(data = data_wide[,-2][train_index,], formula = rownames ~ ., hidden = 10, linear.output = F, act.fct = "logistic")
 summary(model)
 model$net.result
@@ -292,10 +361,23 @@ apply(results$net.result,1, which.max)
 data_wide[]
 ```
 
+
 ```{r}
-data[[1]][[1]]
 ```
 
 
+
+
+
+
+
+
+# Punkt 2 - Statistik
+Test om der er signifikant effekt af 'experiment' på de resulterende kurver.
+```{r}
+model_anova <- lm(data = data_long, formula = Y ~ Experiment * Person)
+summary(model_anova)
+anova(model_anova)
+```
 
 
