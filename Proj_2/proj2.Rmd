@@ -76,7 +76,9 @@ boxplot(DGT ~ location, data = data_fos)
 boxplot(olsenP ~ location, data = data_fos)
 
 #data_fos %>% tidyr::gather("key", "value", -location) %>% ggplot(aes(x = location, y = value, fill = key)) + geom_boxplot() + facet_wrap("key")
-
+par(mfrow = c(1,2))
+plot(data = data_fos , yield ~ olsenP)
+plot(data = data_fos , yield ~ DGT)
 ```
 
 
@@ -99,18 +101,64 @@ anova(lm3)
 summary(lm3)
 
 
-phos.model <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_fos,
+phos.model.DGT <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_fos,
+start = list(alfa = 90 , beta = 1))
+
+phos.model.olsenP <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_fos,
 start = list(alfa = 90 , beta = 1))
 
 plot(phos.model)
 
-summary(phos.model)
-phos.model
+summary(phos.model.DGT)
+summary(phos.model.olsenP)
 
 plot(phos.model$m$gradient())
 
 length(phos.model$m$gradient())
 
+par(mfrow=(c(1,2)))
+alfa1 <- coef(phos.model.DGT)[1]
+beta1 <- coef(phos.model.DGT)[2]
+alfa2 <- coef(phos.model.olsenP)[1]
+beta2 <- coef(phos.model.olsenP)[2]
+plot(data = data_fos , yield ~ DGT)
+lines(x<-c(1:200),(alfa1 * x )/(beta1 + x),col='red')
+plot(data = data_fos , yield ~ olsenP)
+lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
+```
+```{r}
+lm3 <- lm(data = data_fos, formula = DGT ~ location)
+summary(lm3)
+cor(data_fos$location, data_fos$DGT)
+```
+# Permutation test
+
+```{r}
+n <- 500
+results_DGT <- c()
+results_olsenP <- c()
+for (i in 1:n){
+  permutation <- sample(nrow(data_fos))
+  
+  phos.model.DGT_perm <- nls(yield[permutation] ~ alfa * DGT/(beta + DGT) , data = data_fos,
+                        start = list(alfa = 90 , beta = 1))
+
+  phos.model.olsenP_perm <- nls(yield[permutation] ~ alfa * olsenP/(beta + olsenP) , data = data_fos,
+                            start = list(alfa = 90 , beta = 1))
+  
+  results_DGT <- rbind(results_DGT, coef(phos.model.DGT_perm))
+  results_olsenP <- rbind(results_olsenP, coef(phos.model.olsenP_perm))
+}
+sum(beta1 < results_DGT[,2])
+mean(results_DGT[,2])
+alfa1
+beta1
+```
+
+# Predictions
+```{r}
+pred <- predict(phos.model.DGT, data_fos$DGT)
+plot(pred ~data_fos$DGT)
 ```
 
 

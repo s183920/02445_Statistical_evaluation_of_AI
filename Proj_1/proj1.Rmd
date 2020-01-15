@@ -323,7 +323,7 @@ p_vals["Adjusted P-values"] <- p.adjust(p_vals$`P-value`, method = "hochberg")
 plot(sort(p_vals$`Adjusted P-values`))
 ```
 
-
+# ANOVA
 
 ```{r}
 
