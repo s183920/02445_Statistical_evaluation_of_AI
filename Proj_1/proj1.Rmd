@@ -24,6 +24,8 @@ library(reticulate)'
 
 
 # Indlæser data
+
+## Data wide
 Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
 ```{r}
 data <- get(load("armdata.Rdata"))[5][[1]]
@@ -70,7 +72,28 @@ data_wide <- cbind(persons,reps,data_wide)
 head(data_wide)
 ```
 
-## Alternative Data Load
+```{r}
+tidyr::unnest(as.data.frame(data_exp5_named))
+```
+
+
+### Rename data
+
+```{r}
+names(data) <- paste0("person_", 1:10)
+ 
+for (per in c(1:length(data))) {
+  names(data[[per]]) <- paste0("repetion_", 1:10)
+  for (rep in c(1:length(data[[per]]))) {
+    colnames(data[[per]][[rep]]) <- c("x", "y", "z")
+  }
+}
+
+data_exp5_named <- data
+```
+
+
+## Data long
 Indlæser data som en 'lang' matrix med 7 kolonner - En med experiment, en med person, en med repition, en med tid og tre med X Y Z.
 ```{r}
 data <- get(load("armdata.Rdata"))
@@ -118,27 +141,12 @@ write.csv(data_exp5, "Data_exp5.csv")
 
 
 
-## Rename data
-
-```{r}
-names(data_wide) <- paste0("person_", 1:10)
- 
-for (per in c(1:length(data))) {
-  names(data[[per]]) <- paste0("repetion_", 1:10)
-  for (rep in c(1:length(data[[per]]))) {
-    colnames(data[[per]][[rep]]) <- c("x", "y", "z")
-  }
-}
-```
-
-## Plots 3D!!1
+## Plots 3D!!!
 
 ```{r}
 library(rgl)
 #cbind(x,y,z)
-plot3d(data$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
-
-plot3Drgl(data$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+plot3d(data_exp5_named$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
 
 lines3d(x = data_exp5$X, y = data_exp5$Y, z = data_exp5$Z, col = data_long$Person)
 
@@ -173,17 +181,6 @@ PC <- as.matrix(data_wide[3:302]) %*% svd$v
 ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = as.factor(w))) + geom_point()
 svd$d
 ```
-
-
-
-
-
-
-
-
-
-
-
 
 
 

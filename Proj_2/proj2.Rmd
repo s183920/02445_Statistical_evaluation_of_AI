@@ -10,12 +10,22 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# packages
+library(ggplot2)
+library(GGally)
 ```
+
+
 
 # Data
 
 ```{r echo=FALSE}
-data_fos <- get(load("fosfor_data.Rdata"))
+data_fos <- get(load("fosfor_data.Rdata")) %>% 
+  data.frame() %>% 
+  dplyr::mutate(location = as.factor(location))
+data_fos
+
 ```
 
 ## Summaries
@@ -27,7 +37,65 @@ cat("Summary")
 summary(data_fos)
 cat("Data")
 data_fos
+
+nas <- which(is.na(data_fos$yield)) 
+data_fos[unique(c(nas, nas+1, nas-1)), ]
+      
 ```
 
+## Handle NA's
+
+Uses KNN imputation and looks at the k nearest neighbors, the missing value is then replaced with the average of the values for the nearest neighbors
+
+```{r}
+data_fos <- DMwR::knnImputation(data_fos,k=2, meth = "Median")
+```
+
+
 ## Plots
+
+```{r}
+ggpairs(data_fos, columns = c("DGT", "olsenP", "yield"))
+
+
+#par(mfrow = c(3,1))
+boxplot(yield ~location, data = data_fos)
+boxplot(DGT ~ location, data = data_fos)
+boxplot(olsenP ~ location, data = data_fos)
+
+#data_fos %>% tidyr::gather("key", "value", -location) %>% ggplot(aes(x = location, y = value, fill = key)) + geom_boxplot() + facet_wrap("key")
+
+```
+
+
+# Models
+
+## ANOVA
+
+```{r}
+lm1 <- lm(data = data_fos, formula = yield ~ DGT)
+anova(lm1)
+summary(lm1)
+
+
+lm2 <- lm(data = data_fos, formula = yield ~ olsenP)
+anova(lm2)
+summary(lm2)
+
+lm3 <- lm(data = data_fos, formula = yield ~ location)
+anova(lm3)
+summary(lm3)
+
+
+phos.model <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_fos,
+start = list(alfa = 90 , beta = 1))
+
+plot(phos.model)
+
+summary(phos.model)
+phos.model
+
+
+
+```
 
