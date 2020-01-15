@@ -1,0 +1,33 @@
+---
+title: "Project 2"
+author: "Lukas Leindals"
+date: "15/1/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data
+
+```{r echo=FALSE}
+data_fos <- get(load("fosfor_data.Rdata"))
+```
+
+## Summaries
+
+```{r}
+cat("Structure")
+str(data_fos)
+cat("Summary")
+summary(data_fos)
+cat("Data")
+data_fos
+```
+
+## Plots
+

@@ -131,12 +131,18 @@ for (per in c(1:length(data))) {
 }
 ```
 
-## Plots
+## Plots 3D!!1
 
 ```{r}
 library(rgl)
 #cbind(x,y,z)
 plot3d(data$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+
+plot3Drgl(data$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+
+lines3d(x = data_exp5$X, y = data_exp5$Y, z = data_exp5$Z, col = data_long$Person)
+
+summary(data_exp5)
 
 ```
 
