@@ -106,7 +106,6 @@ plot(pca$x, col = data_wide$persons)
 Methods
 
 ```{r}
-names(getModelInfo())
 library(ggplot2)
 
 w <- sort(rep(1:10,10))
@@ -140,10 +139,8 @@ for (i in 1:N){
     
   }
   
-  
-  
-  
 }
+```
 
 #KNN
 
@@ -162,7 +159,6 @@ test_labels <- data_wide$persons[ind[81:100]]
 #knn_data <- data_wide[, -c(1,2)]
 mean(knn(train_set, test_set, train_labels, k = 10) == test_labels)
 
-```
 m <- apply(errors, 2, mean)
 which.min(m)
 m
@@ -170,10 +166,12 @@ plot(m)
 
 ```
 
+
 # Gaussian Mixture Model
 
 ```{r}
 library(mclust, quietly=TRUE)
+```
 
 ## leave one out
 
