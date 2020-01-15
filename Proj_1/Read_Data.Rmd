@@ -109,7 +109,7 @@ data_exp5
 which(is.na(data_exp5), arr.ind = T)
 
 
-
+data_long <- na.locf(data_long)
 data_exp5 <- na.locf(data_exp5)
 write.csv(data_exp5, "Data_exp5.csv")
 ```
@@ -182,19 +182,24 @@ svd$d
 
 
 
-# Cross - Validation KNN
+# Cross-Validation KNN (1 Neighbour) & Logistic Regression
+*Korrekt brug af McNemar? Binomial eller med continuity correction * \
+*Konfidens intervaller - Beta funktion?*
 
 ```{r}
 library(class)
-data_KNN <- data_exp5
-s <- sample(10000)
-nrow(data_exp5)
-N <- nrow(data_KNN)
-K_fold <- 50
+library(nnet)
+
+
+data_CV <- data_wide
+
+N <- nrow(data_CV)
+s <- sample(N)
+K_fold <- 10
+
 K <- c(1:20)
-errors <- matrix(rep(NA, K_fold * length(K)), nrow = K_fold)
 
-
+accuracy <- c()
 random_index <- split(sample(c(1:N),N), c(1:K_fold))
  
 for (i in c(1:K_fold)){
@@ -203,71 +208,110 @@ for (i in c(1:K_fold)){
   train_index <- Reduce(c,random_index[f])
   test_index <- Reduce(c,random_index[i])
 
-  train_set <- data_exp5[train_index,]
-  test_set <- data_exp5[test_index,]
-  for (k in K){
-    
-    E <- mean(knn(train_set[,c(3:7)], test_set[,c(3:7)], train_set$Person, k = k) == test_set$Person)
-    errors[i,k] <- E
-    
-    
-  }
+  train_set <- data_CV[train_index,]
+  test_set <- data_CV[test_index,]
   
+  pred_KNN <- knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$persons, k = 1)
+  acc_KNN <- pred_KNN == test_set$persons
+  
+  LogReg <- multinom(data = train_set[,-2], formula = persons ~ ., MaxNWts = 10000)
+  pred_LogReg <- predict(LogReg, test_set[,-c(1,2)])
+  acc_LogReg <- pred_LogReg == test_set$persons
 
+  
+  accuracy <- rbind(accuracy, cbind(acc_KNN, acc_LogReg))
+
+  
 }
+accuracy <- as.data.frame(accuracy)
+apply(accuracy,2,mean)
 
-#KNN
-apply(errors,2,mean)
-```
+n_11 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == T)
+n_12 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == F)
+n_21 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == T)
+n_22 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == F)
+contingency <- matrix(c(n_11, n_21, n_12, n_22),nrow = 2)
 
+t <- mcnemar.test(contingency, correct = T)
+CI_KNN <- DescTools::BinomCI(sum(accuracy$acc_KNN), 100, method = "jeffrey")
+CI_LogReg <- DescTools::BinomCI(sum(accuracy$acc_LogReg), 100, method = "jeffrey")
+CI_LogReg
+CI_KNN
+2* pbinom(max(n_12,n_21) ,s , 1/2)
 
-```{r}
-
-
-
-library(class)
-set.seed(235)
-
-ind <- sample(100)
-knn_data <- data_wide[, -c(1,2)]
-
-train_set <- knn_data[ind[1:80],]
-test_set <- knn_data[ind[81:100],]
-train_labels <- data_wide$persons[ind[1:80]]
-test_labels <- data_wide$persons[ind[81:100]]
-
-#knn_data <- data_wide[, -c(1,2)]
-mean(knn(train_set, test_set, train_labels, k = 10) == test_labels)
-m <- apply(errors, 2, mean)
-which.min(m)
-m
-plot(m)
 
 ```
-
-
-
-
-```{r}
-library(nnet)
-fit <- multinom(data = data_wide[-2], formula = persons ~ .)
-```
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # Punkt 2 - Statistik
 Test om der er signifikant effekt af 'experiment' på de resulterende kurver.
+
+
+Beregner mean-curve for hvert eksperiment.
+```{r}
+mean_curves <- c()
+for (i in 1:16){
+  for (j in 1:100){
+    
+    mean_point <- apply(subset(subset(data_long, Experiment == i), Time == j)[,c(5:7)], 2, mean)
+    mean_curves <- rbind(mean_curves, c(i,j,mean_point))
+    
+  }
+  
+  
+  
+}
+
+mean_curves <- as.data.frame(mean_curves)
+
+library(rgl)
+#cbind(x,y,z)
+plot3d(mean_curves$X, mean_curves$Y, mean_curves$Z, type = 'p', col = mean_curves$V1, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+  
+```
+
+
+Mange one sample t-test, hvor længden imellem hvert punkt i hvert eksperiment sammenlignes.
+Nul-hypotese: den gennemsnitlige afstande imellem punkterne i to kurver er 0.
+Resultatet giver en dataframe rækker svarene til sammenligning af samtlige kombinationer af de 16 eksperimenter.
+Konfidens intervaller. \
+*One sample t-test med afstand i mellem punkter? *
+*ANOVA - Forskel i mean af X, Y og Z eksperimenterne imellem*
+
+
+```{r}
+names(mean_curves) <- c("Experiment", "Time", "X", "Y", "Z")
+combinations <- combn(1:16, 2)
+n <- ncol(combinations)
+dist_df <- c()
+for (i in 1:n){
+  curve1 <- subset(mean_curves, Experiment == combinations[1,i])[,c(3:5)]
+  curve2 <- subset(mean_curves, Experiment == combinations[2,i])[,c(3:5)]
+  distance <- c(combinations[1,i], combinations[2,i], sqrt(apply((curve1 - curve2)^2, 1, sum)))
+  dist_df <- rbind(dist_df, distance)
+}
+
+
+dist_df <- as.data.frame(dist_df)
+
+p_vals <- c()
+for (i in 1:nrow(dist_df)){
+  test <- t.test(dist_df[i, -c(1,2)])
+  p_vals <- rbind(p_vals, c(paste0(dist_df[i,1],"-", dist_df[i,2]), test$conf.int[1], test$conf.int[2], test$p.value))
+  
+}
+
+test$conf.int
+p_vals <- as.data.frame(p_vals)
+names(p_vals) <- c("Experiments","Lower", "Upper", "P-value")
+
+p_vals$`P-value` <- as.double(levels(p_vals$`P-value`))
+p_vals["Adjusted P-values"] <- p.adjust(p_vals$`P-value`, method = "hochberg")
+plot(sort(p_vals$`Adjusted P-values`))
+```
+
+
+
 ```{r}
 
 par(mfrow = c(1,3))
