@@ -13,7 +13,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # packages
 library(ggplot2)
-library(GGally)
 ```
 
 
@@ -38,8 +37,8 @@ summary(data_fos)
 cat("Data")
 data_fos
 
-nas <- which(is.na(data_fos$yield)) 
-data_fos[unique(c(nas, nas+1, nas-1)), ]
+# nas <- which(is.na(data_fos$yield)) 
+# data_fos[unique(c(nas, nas+1, nas-1)), ]
       
 ```
 
@@ -51,11 +50,24 @@ Uses KNN imputation and looks at the k nearest neighbors, the missing value is t
 data_fos <- DMwR::knnImputation(data_fos,k=2, meth = "Median")
 ```
 
+## grouped data set
+
+groups the data, so that there is only one yield for each combination of location, DGT and olsenP, which is the mean. THis is done as these three factors are strongly dependent of each other.
+
+```{r}
+data_grouped <- data_fos %>% dplyr::group_by(location, DGT, olsenP) %>% dplyr::summarise_each(mean)
+data_grouped
+
+ggplot(tidyr::gather(data_grouped, "key", "value", -c(location, yield)), aes(value, yield, col = location)) +
+  geom_point() +
+  facet_wrap("key", scales = "free")
+```
+
 
 ## Plots
 
 ```{r}
-ggpairs(data_fos, columns = c("DGT", "olsenP", "yield"))
+GGally::ggpairs(data_fos, columns = c("DGT", "olsenP", "yield"))
 
 
 #par(mfrow = c(3,1))
@@ -95,7 +107,12 @@ plot(phos.model)
 summary(phos.model)
 phos.model
 
+plot(phos.model$m$gradient())
 
+length(phos.model$m$gradient())
 
 ```
+
+
+
 

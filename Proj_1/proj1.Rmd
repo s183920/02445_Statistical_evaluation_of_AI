@@ -73,7 +73,7 @@ head(data_wide)
 ```
 
 ```{r}
-tidyr::unnest(as.data.frame(data_exp5_named))
+#tidyr::unnest(as.data.frame(data_exp5_named))
 ```
 
 
@@ -148,7 +148,7 @@ library(rgl)
 #cbind(x,y,z)
 plot3d(data_exp5_named$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
 
-lines3d(x = data_exp5$X, y = data_exp5$Y, z = data_exp5$Z, col = data_long$Person)
+lines3d(x = data_long$X, y = data_long$Y, z = data_long$Z, col = data_long$Experiment)
 
 summary(data_exp5)
 
