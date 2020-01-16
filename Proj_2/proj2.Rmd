@@ -11,6 +11,9 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+# set seed
+set.seed(-2000)
+
 # packages
 library(ggplot2)
 ```
@@ -39,6 +42,9 @@ data_fos
 
 # nas <- which(is.na(data_fos$yield)) 
 # data_fos[unique(c(nas, nas+1, nas-1)), ]
+
+#xtable::xtable(summary(data_fos, maxsum = 9)) #converts to latex
+
       
 ```
 
@@ -75,7 +81,7 @@ boxplot(yield ~location, data = data_fos)
 boxplot(DGT ~ location, data = data_fos)
 boxplot(olsenP ~ location, data = data_fos)
 
-#data_fos %>% tidyr::gather("key", "value", -location) %>% ggplot(aes(x = location, y = value, fill = key)) + geom_boxplot() + facet_wrap("key")
+data_fos %>% tidyr::gather("key", "value", -location) %>% dplyr::filter(key == "yield") %>% ggplot(aes(x = location, y = value, fill = key)) + geom_boxplot() 
 par(mfrow = c(1,2))
 plot(data = data_fos , yield ~ olsenP)
 plot(data = data_fos , yield ~ DGT)
@@ -107,14 +113,11 @@ start = list(alfa = 90 , beta = 1))
 phos.model.olsenP <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_fos,
 start = list(alfa = 90 , beta = 1))
 
-plot(phos.model)
+
 
 summary(phos.model.DGT)
 summary(phos.model.olsenP)
 
-plot(phos.model$m$gradient())
-
-length(phos.model$m$gradient())
 
 par(mfrow=(c(1,2)))
 alfa1 <- coef(phos.model.DGT)[1]
@@ -127,11 +130,6 @@ plot(data = data_fos , yield ~ olsenP)
 lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
 ```
 
-```{r}
-lm3 <- lm(data = data_fos, formula = DGT ~ location)
-summary(lm3)
-cor(data_fos$location, data_fos$DGT)
-```
 # Permutation test
 
 ```{r}

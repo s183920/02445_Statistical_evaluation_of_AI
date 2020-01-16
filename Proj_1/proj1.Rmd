@@ -186,14 +186,14 @@ for (i in 1:experiements){
 
   for (j in 1:persons){
     pers <- exp[[j]]
-    
+
     for (k in 1:repetitions){
       rep <- pers[[k]]
-      
+
       data_long <- rbind(data_long, (cbind(rep(i,100),rep(j,100), rep(k,100), c(1:100) , rep)))
-      
+
     }
-    
+
   }
 
 }
@@ -226,7 +226,12 @@ library(rgl)
 #cbind(x,y,z)
 plot3d(data_exp5_named$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
 
-lines3d(x = data_long$X, y = data_long$Y, z = data_long$Z, col = data_long$Experiment)
+#open3d()
+lines3d(x = data_long$X, y = data_long$Y, z = data_long$Z, col = data_long$Experiment, legend = T)
+#legend3d("bottomright", c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"))
+
+#plot3d(data_exp5, type = 'p', col = person, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+
 
 
 ```
@@ -238,11 +243,7 @@ lines3d(x = data_long$X, y = data_long$Y, z = data_long$Z, col = data_long$Exper
 data_wide[colnames] <- scale(data_wide[colnames])
 
 #str(data_wide[,-c(1,2)])
-pca <- prcomp(x = data_wide[,-c(1,2)], scale. = T, center = T)
-pca_summary <- summary(pca)
-pca_summary$importance[,1:10]
 
-plot(pca$x, col = data_wide$persons)
 ```
 
 
@@ -260,6 +261,14 @@ svd <- svd(data_wide[3:302])
 PC <- as.matrix(data_wide[3:302]) %*% svd$v
 ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = as.factor(w))) + geom_point()
 head(svd$d)
+
+
+
+pca <- prcomp(x = data_wide[,-c(1,2)], scale. = T, center = T)
+pca_summary <- summary(pca)
+pca_summary$importance[,1:10]
+
+plot(pca$x, col = data_wide$persons)
 ```
 
 
@@ -329,6 +338,8 @@ n_12 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == F)
 n_21 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == T)
 n_22 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == F)
 contingency <- matrix(c(n_11, n_21, n_12, n_22),nrow = 2)
+
+contingency
 
 mc_nemar_result <- mcnemar.test(contingency, correct = T)
 CI_KNN <- DescTools::BinomCI(sum(accuracy$acc_KNN), 100, method = "jeffrey")
@@ -401,6 +412,7 @@ for (i in 1:nrow(dist_df)){
   
 }
 
+
 p_vals <- as.data.frame(p_vals)
 names(p_vals) <- c("Experiments","Lower", "Upper", "P-value")
 
@@ -432,15 +444,16 @@ head(TukeyHSD(model_anova))
 ## ANOVA in each direction
 
 ```{r}
-library(dplyr)
-
-diff_data <-data_long %>% 
-  group_by(experiment, person, repetition, direction) %>% 
-  summarise(diff = max(value, na.rm = T) - min(value, na.rm = T)) %>% 
+diff_data <- data_long %>% 
+  dplyr::group_by(experiment, person, repetition, direction) %>% 
+  dplyr::summarise(diff = max(value, na.rm = T) - min(value, na.rm = T)) %>% 
   tidyr::spread(direction, diff) %>% 
-  ungroup() %>% 
-  mutate(experiment = as.factor(experiment)) 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(experiment = as.factor(experiment)) 
   
+cat("Differences between max and mix for each rep")
+head(diff_data)
+
 
 lm_x <- lm(data = diff_data, x ~ experiment)
 lm_y <- lm(data = diff_data, y ~ experiment)
@@ -453,7 +466,7 @@ anova_z <- anova(lm_z)
 p_vals_normal <- c(x = anova_x$`Pr(>F)`[1], y = anova_y$`Pr(>F)`[1], z = anova_z$`Pr(>F)`[1])
 p_vals_hoch <- p.adjust(p_vals_normal, method = "hochberg")
 p_vals_bonf <- p.adjust(p_vals_normal, method = "bonferroni")
-p_vals_BH <- p.adjust(p_vals_normal, method = "BH")
+p_vals_BH <- p.adjust(p_vals_normal, method = "BH") #benjamini hochberg
 
 
 p_vals_anova <- data.frame(normal = p_vals_normal, hochberg = p_vals_hoch, bonferroni = p_vals_bonf, BH = p_vals_BH )
@@ -462,12 +475,5 @@ rm(p_vals_normal, p_vals_hoch, p_vals_bonf, p_vals_BH )
 
 p_vals_anova
 
-diff_data
-
-group_by(experiment) %>% filter(experiment == 1) %>% plot(x) 
-
-diff_data$x
-
-plot(diff_data["experiment" == 1,]$x)
 ```
 
