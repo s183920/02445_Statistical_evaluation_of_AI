@@ -16,6 +16,7 @@ set.seed(-2000)
 
 # packages
 library(ggplot2)
+library(magrittr)
 ```
 
 
@@ -130,6 +131,85 @@ plot(data = data_fos , yield ~ olsenP)
 lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
 ```
 
+```{r}
+lm3 <- lm(data = data_fos, formula = DGT ~ location)
+summary(lm3)
+cor(data_fos$location, data_fos$DGT)
+```
+
+
+# Predictions - Test errorrate med leave one out cross validation
+```{r}
+
+
+data_CV <- data_fos
+
+N <- nrow(data_CV)
+s <- sample(N)
+K_fold <- N
+
+
+accuracy <- c()
+random_index <- split(sample(c(1:N),N), c(1:K_fold))
+loss <- c()
+for (i in c(1:K_fold)){
+  f <- c(1:K_fold)[-i]
+  train_index <- Reduce(c,random_index[f])
+  test_index <- Reduce(c,random_index[i])
+
+  train_set <- data_CV[train_index,]
+  test_set <- data_CV[test_index,]
+  model_cv_DGT <- phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = train_set,
+                        start = list(alfa = 90 , beta = 1))
+  
+  model_cv_olsenP <- phos.model.DGT_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = train_set,
+                        start = list(alfa = 90 , beta = 1))
+  
+  pred_DGT <- predict(model_cv_DGT, test_set)
+  pred_olsenP <- predict(model_cv_olsenP, test_set)
+  
+  error_DGT <- sum((test_set$yield - pred_DGT)^2)
+  error_olsenP <- sum((test_set$yield - pred_olsenP)^2)
+  loss <- rbind(loss,c(error_DGT, error_olsenP))
+  
+}
+Z <- loss[,1] - loss[,2]
+t.test(Z)
+t.test(loss[,1], loss[,2], paired =T)
+qqnorm(Z)
+qqline(Z)
+
+
+```
+
+# Bootstrap - Difference in performance with Michaelis Menten fitted to DGT vs olsenP
+Non parametric bootstrapping. Sampler fra forskel i loss af de to modeller. Udregner mean af disse forskelle og bestemmer konfidens intervaller.
+```{r}
+z_bootstrap <- apply( replicate(10000, sample(Z, replace = T)), 2, mean)
+hist(z_bootstrap)
+alfa <- 0.05
+quantile(z_bootstrap, c(alfa/2,1-alfa/2))
+```
+
+# Rank Sum Test - Difference in performance with Michaelis Menten fitted to DGT vs olsenP
+Concatenates loss af DGT og olsenP. Bestemmers størrelseordenen af denne vektor og finder rank sum for DGT.
+Derefter laves permutationer af vektor med 1-72 og rank sum af de 36 første bestemmes og sammenlignes med rank sum for DGT
+```{r}
+Z_RST <- order(c(loss[,1], loss[,2]))
+DGT_RS <- sum(Z_RST[1:36])
+RST <- c()
+for (i in 1:1000){
+  RST_sample <- sample(72)
+  RST <- c(RST,sum(RST_sample[1:36]))
+}
+p_val <- 2*mean(DGT_RS>RST)
+p_val
+hist(RST)
+Z_RST
+```
+
+
+
 # Permutation test
 
 ```{r}
@@ -153,13 +233,3 @@ mean(results_DGT[,2])
 alfa1
 beta1
 ```
-
-# Predictions
-```{r}
-pred <- predict(phos.model.DGT, data_fos$DGT)
-plot(pred ~data_fos$DGT)
-```
-
-
-
-
