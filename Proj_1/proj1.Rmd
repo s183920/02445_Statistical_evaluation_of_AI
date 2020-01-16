@@ -15,8 +15,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # load packages
 
 library(zoo)
-'library(magrittr)
-library(reticulate)'
+library(magrittr)
+
 ```
 
 
@@ -25,7 +25,89 @@ library(reticulate)'
 
 # Indlæser data
 
+```{r dataload}
+# data <- get(load("armdata.Rdata"))
+
+```
+
+Rename data
+
+```{r rename data}
+# names(data) <- paste0("experiment_", 1:16)
+# 
+# for (expe in c(1:length(data))){
+#   names(data[[expe]]) <- paste0("person_", 1:10)
+#   for (per in c(1:length(data[[expe]]))) {
+#     names(data[[expe]][[per]]) <- paste0("repetion_", 1:10)
+#     for (rep in c(1:length(data[[expe]][[per]]))) {
+#       colnames(data[[expe]][[per]][[rep]]) <- c("x", "y", "z")
+#     }
+#   }
+# }
+
+
+```
+
+## Data long
+
+```{r data long}
+# data_long <- as.data.frame(data)
+# 
+# data_long <- data_long %>% 
+#   tidyr::gather(key = "col_name", value = "value") %>% 
+#   tidyr::separate(col_name, c("experiment", "person", "repetition", "direction"), sep = "\\.") %>% 
+#   dplyr::mutate(experiment = stringr::str_remove(string = experiment, pattern = ".*\\_")) %>% 
+#   dplyr::mutate(person = stringr::str_remove(string = person, pattern = ".*\\_")) %>%
+#   dplyr::mutate(repetition = stringr::str_remove(string = repetition, pattern = ".*\\_")) %>%
+#   dplyr::mutate(direction = direction) %>%
+#   dplyr::mutate(time = rep(1:100, dim(data_long)[2]))
+# 
+# cat("Head of data long")
+# head(data_long)
+# cat("Dimensions of data long")
+# dim(data_long)
+
+```
+
 ## Data wide
+
+Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
+
+!!! Data is sorted in a weird way
+
+```{r}
+
+
+# data_long %>%
+#   dplyr::mutate("time_temp" = time, "direction_temp" = direction) %>%
+#   tidyr::unite(position, direction, time, sep = "_") %>%
+#   tidyr::spread(position, value) %>%
+#   dplyr::arrange(as.numeric(experiment), as.numeric(person), as.numeric(repetition)) %>% 
+#   dplyr::group_by(experiment)
+# 
+# cat("Head of data long")
+# head(data_wide)
+# cat("Dimensions of data long")
+# dim(data_wide)
+# 
+# data_wide[gtools::mixedorder(data_wide$repetition,data_wide$person),]
+# 
+# gtools::mixedorder(data_wide$repetition,data_wide$person)
+# gtools::mixedorder(data_wide$repetition)
+```
+
+## Data for eexperiment 5
+
+```{r}
+# data_long_exp5 <- data_long %>% dplyr::filter(experiment == 5)
+# data_wide_exp5 <- data_wide %>% dplyr::filter(experiment == "experiment_5") %>% dplyr::select(-experiment)
+# 
+# data_wide
+
+```
+
+
+
 Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
 ```{r}
 data <- get(load("armdata.Rdata"))[5][[1]]
@@ -37,21 +119,21 @@ y <- c()
 z <- c()
 for (p in 1:person){
   for (r in 1:rep){
-    
+
     longitude <- data[[p]][[r]][,1]
     x <- cbind(x,data[[p]][[r]][,1])
   }
 }
 for (p in 1:person){
   for (r in 1:rep){
-    
+
     transversal <- data[[p]][[r]][,2]
     y <- cbind(y,data[[p]][[r]][,2])
   }
 }
 for (p in 1:person){
   for (r in 1:rep){
-    
+
     vertical <- data[[p]][[r]][,3]
     z <- cbind(z,data[[p]][[r]][,3])
   }
@@ -141,7 +223,7 @@ write.csv(data_exp5, "Data_exp5.csv")
 
 
 
-## Plots 3D!!!
+# Plots 3D!!!
 
 ```{r}
 library(rgl)
