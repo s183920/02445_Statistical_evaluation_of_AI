@@ -73,23 +73,32 @@ ggplot(tidyr::gather(data_grouped, "key", "value", -c(location, yield)), aes(val
 
 ## Plots
 
+Comparison plot
+
 ```{r}
 GGally::ggpairs(data_fos, columns = c("DGT", "olsenP", "yield"))
+```
 
+Boxplots
 
+```{r}
 #par(mfrow = c(3,1))
 boxplot(yield ~location, data = data_fos)
 boxplot(DGT ~ location, data = data_fos)
 boxplot(olsenP ~ location, data = data_fos)
 
 data_fos %>% tidyr::gather("key", "value", -location) %>% dplyr::filter(key == "yield") %>% ggplot(aes(x = location, y = value, fill = key)) + geom_boxplot() 
+```
+
+Scatter plots
+
+```{r}
 par(mfrow = c(1,2))
 plot(data = data_fos , yield ~ olsenP)
 plot(data = data_fos , yield ~ DGT)
 ```
 
-
-# Models
+# OlsenP vs. DGT
 
 ## ANOVA
 
@@ -119,7 +128,11 @@ start = list(alfa = 90 , beta = 1))
 summary(phos.model.DGT)
 summary(phos.model.olsenP)
 
+```
 
+### Plots of model coefficients
+
+```{r}
 par(mfrow=(c(1,2)))
 alfa1 <- coef(phos.model.DGT)[1]
 beta1 <- coef(phos.model.DGT)[2]
@@ -131,17 +144,12 @@ plot(data = data_fos , yield ~ olsenP)
 lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
 ```
 
+
+## Predicting yield
+
+Test errorrate med leave one out cross validation
+
 ```{r}
-lm3 <- lm(data = data_fos, formula = DGT ~ location)
-summary(lm3)
-cor(data_fos$location, data_fos$DGT)
-```
-
-
-# Predictions - Test errorrate med leave one out cross validation
-```{r}
-
-
 data_CV <- data_fos
 
 N <- nrow(data_CV)
@@ -182,8 +190,11 @@ qqline(Z)
 
 ```
 
-# Bootstrap - Difference in performance with Michaelis Menten fitted to DGT vs olsenP
+### Bootstrap - loss
+
+Difference in performance with Michaelis Menten fitted to DGT vs olsenP
 Non parametric bootstrapping. Sampler fra forskel i loss af de to modeller. Udregner mean af disse forskelle og bestemmer konfidens intervaller.
+
 ```{r}
 z_bootstrap <- apply( replicate(10000, sample(Z, replace = T)), 2, mean)
 hist(z_bootstrap)
@@ -191,9 +202,12 @@ alfa <- 0.05
 quantile(z_bootstrap, c(alfa/2,1-alfa/2))
 ```
 
-# Rank Sum Test - Difference in performance with Michaelis Menten fitted to DGT vs olsenP
+### Rank Sum Test 
+
+Difference in performance with Michaelis Menten fitted to DGT vs olsenP
 Concatenates loss af DGT og olsenP. Bestemmers størrelseordenen af denne vektor og finder rank sum for DGT.
 Derefter laves permutationer af vektor med 1-72 og rank sum af de 36 første bestemmes og sammenlignes med rank sum for DGT
+
 ```{r}
 Z_RST <- order(c(loss[,1], loss[,2]))
 DGT_RS <- sum(Z_RST[1:36])
@@ -208,9 +222,9 @@ hist(RST)
 Z_RST
 ```
 
+# Influence of phosphorous
 
-
-# Permutation test
+## Permutation test
 
 ```{r}
 n <- 500

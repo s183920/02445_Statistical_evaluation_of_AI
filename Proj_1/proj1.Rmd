@@ -12,27 +12,26 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+
 # load packages
-
-library(zoo)
 library(magrittr)
-
+library(ggplot2)
 ```
 
 
 
+#DATA
 
-
-# Indlæser data
+## Indlæser data
 
 ```{r dataload}
-# data <- get(load("armdata.Rdata"))
+data <- get(load("armdata.Rdata"))
 
 ```
 
-Rename data
+## Rename data
 
-```{r rename data}
+```{r rename_data}
 names(data) <- paste0("experiment_", 1:16)
 
 for (expe in c(1:length(data))){
@@ -50,245 +49,310 @@ for (expe in c(1:length(data))){
 
 ## Data long
 
-```{r data long}
+Indlæser data som en 'lang' matrix med 7 kolonner - En med experiment, en med person, en med repition, en med tid og tre med X Y Z.
+
+NA's fjernes ved at indsætte værdien for den næste i rækken, da det er en projektilbevægelse og disse to værdier dermed må ligge tæt på hinanden.
+
+```{r data_long}
 data_long <- as.data.frame(data)
 
 data_long <- data_long %>%
   tidyr::gather(key = "col_name", value = "value") %>%
   tidyr::separate(col_name, c("experiment", "person", "repetition", "direction"), sep = "\\.") %>%
-  dplyr::mutate(experiment = stringr::str_remove(string = experiment, pattern = ".*\\_")) %>%
-  dplyr::mutate(person = stringr::str_remove(string = person, pattern = ".*\\_")) %>%
-  dplyr::mutate(repetition = stringr::str_remove(string = repetition, pattern = ".*\\_")) %>%
-  dplyr::mutate(direction = direction) %>%
-  dplyr::mutate(time = rep(1:100, dim(data_long)[2]))
-# 
-# cat("Head of data long")
-# head(data_long)
-# cat("Dimensions of data long")
-# dim(data_long)
+  dplyr::mutate(experiment = as.numeric(stringr::str_remove(string = experiment, pattern = ".*\\_"))) %>%
+  dplyr::mutate(person = as.numeric(stringr::str_remove(string = person, pattern = ".*\\_"))) %>%
+  dplyr::mutate(repetition = as.numeric(stringr::str_remove(string = repetition, pattern = ".*\\_"))) %>%
+  dplyr::mutate(time = rep(1:100, dim(data_long)[2])) %>% 
+  dplyr::mutate(experiment = as.factor(experiment), 
+                person = as.factor(person), 
+                repetition = as.factor(repetition),
+                time = as.factor(time)) %>% 
+  tidyr::spread(direction, value)
+
+data_long[, c("x", "y", "z")] <- lapply(data_long[, c("x", "y", "z")], fromLast = T, zoo::na.locf)  #replace NA's with the next observation
+
+
+cat("Head of data long")
+head(data_long)
+cat("Dimensions of data long: ", dim(data_long))
 
 ```
+
+### Summary of data
+
+```{r data_summary}
+summary(data_long)
+str(data_long)
+```
+
 
 ## Data wide
 
 Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
 
-!!! Data is sorted in a weird way
+```{r data_wide}
+data_wide <- data_long %>%
+  tidyr::gather(direction, value, x, y, z) %>% 
+  dplyr::mutate(experiment = as.numeric(experiment), person = as.numeric(person), repetition = as.numeric(repetition)) %>% 
+  tidyr::unite(position, direction, time, sep = "_") %>%
+  tidyr::spread(position, value) %>%
+  dplyr::arrange(experiment, person, repetition) %>%
+  dplyr::mutate(experiment = as.factor(experiment), person = as.factor(person), repetition = as.factor(repetition))
 
-```{r}
+data_wide <- data_wide[,gtools::mixedorder(colnames(data_wide))]
 
-
-# data_long %>%
-#   dplyr::mutate("time_temp" = time, "direction_temp" = direction) %>%
-#   tidyr::unite(position, direction, time, sep = "_") %>%
-#   tidyr::spread(position, value) %>%
-#   dplyr::arrange(as.numeric(experiment), as.numeric(person), as.numeric(repetition)) %>% 
-#   dplyr::group_by(experiment)
-# 
-# cat("Head of data long")
-# head(data_wide)
-# cat("Dimensions of data long")
-# dim(data_wide)
-# 
-# data_wide[gtools::mixedorder(data_wide$repetition,data_wide$person),]
-# 
-# gtools::mixedorder(data_wide$repetition,data_wide$person)
-# gtools::mixedorder(data_wide$repetition)
-```
-
-## Data for eexperiment 5
-
-```{r}
-# data_long_exp5 <- data_long %>% dplyr::filter(experiment == 5)
-# data_wide_exp5 <- data_wide %>% dplyr::filter(experiment == "experiment_5") %>% dplyr::select(-experiment)
-# 
-# data_wide
+cat("Head of data long")
+head(data_wide)
+cat("Dimensions of data long: ", dim(data_wide))
 
 ```
+
+## Data for experiment 5
+
+```{r data_exp5}
+data_exp5 <- data[["experiment_5"]]
+data_long_exp5 <- data_long %>% dplyr::filter(experiment == 5)
+data_wide_exp5 <- data_wide %>% dplyr::filter(experiment == 5) %>% dplyr::select(-experiment)
+
+cat("Head of data long for experiment 5, with the dimensions: ", dim(data_long_exp5))
+head(data_long_exp5)
+cat("\nHead of data wide for experiment 5, with the dimensions: ", dim(data_wide_exp5))
+head(data_wide_exp5)
+```
+
+
 
 
 
 Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
 ```{r data_wide, echo=FALSE}
-data <- get(load("armdata.Rdata"))[5][[1]]
-pers1 <- data[[1]][[2]]
-person <- 10
-rep <- 10
-x <- c()
-y <- c()
-z <- c()
-for (p in 1:person){
-  for (r in 1:rep){
-
-    longitude <- data[[p]][[r]][,1]
-    x <- cbind(x,data[[p]][[r]][,1])
-  }
-}
-for (p in 1:person){
-  for (r in 1:rep){
-
-    transversal <- data[[p]][[r]][,2]
-    y <- cbind(y,data[[p]][[r]][,2])
-  }
-}
-for (p in 1:person){
-  for (r in 1:rep){
-
-    vertical <- data[[p]][[r]][,3]
-    z <- cbind(z,data[[p]][[r]][,3])
-  }
-}
-
-x <- t(na.locf(x, fromLast = T))
-y <- t(na.locf(y, fromLast = T))
-z <- t(na.locf(z, fromLast = T))
-
-colnames <- c( paste0("x_", 1:100),paste0("y_", 1:100),paste0("z_", 1:100))
-persons <- c(rep("person1", 10),rep("person2", 10),rep("person3", 10),rep("person4", 10),rep("person5", 10),rep("person6", 10),rep("person7", 10),rep("person8", 10),rep("person9", 10),rep("person10", 10))
-reps <- rep(1:10,10)
-
-data_wide <- as.data.frame(cbind(x,y,z), row.names = 1:100)
-names(data_wide) <- colnames
-
-data_wide <- cbind(persons,reps,data_wide)
-head(data_wide)
+# library(zoo)
+# data <- get(load("armdata.Rdata"))[5][[1]]
+# pers1 <- data[[1]][[2]]
+# person <- 10
+# rep <- 10
+# x <- c()
+# y <- c()
+# z <- c()
+# for (p in 1:person){
+#   for (r in 1:rep){
+# 
+#     longitude <- data[[p]][[r]][,1]
+#     x <- cbind(x,data[[p]][[r]][,1])
+#   }
+# }
+# for (p in 1:person){
+#   for (r in 1:rep){
+# 
+#     transversal <- data[[p]][[r]][,2]
+#     y <- cbind(y,data[[p]][[r]][,2])
+#   }
+# }
+# for (p in 1:person){
+#   for (r in 1:rep){
+# 
+#     vertical <- data[[p]][[r]][,3]
+#     z <- cbind(z,data[[p]][[r]][,3])
+#   }
+# }
+# 
+# x <- t(na.locf(x, fromLast = T))
+# y <- t(na.locf(y, fromLast = T))
+# z <- t(na.locf(z, fromLast = T))
+# 
+# colnames <- c( paste0("x_", 1:100),paste0("y_", 1:100),paste0("z_", 1:100))
+# persons <- c(rep("person1", 10),rep("person2", 10),rep("person3", 10),rep("person4", 10),rep("person5", 10),rep("person6", 10),rep("person7", 10),rep("person8", 10),rep("person9", 10),rep("person10", 10))
+# reps <- rep(1:10,10)
+# 
+# data_wide <- as.data.frame(cbind(x,y,z), row.names = 1:100)
+# names(data_wide) <- colnames
+# 
+# data_wide <- cbind(persons,reps,data_wide)
+# head(data_wide)
 ```
 
 
+ 
 ### Rename data
 
-```{r rename_data}
-names(data) <- paste0("person_", 1:10)
- 
-for (per in c(1:length(data))) {
-  names(data[[per]]) <- paste0("repetion_", 1:10)
-  for (rep in c(1:length(data[[per]]))) {
-    colnames(data[[per]][[rep]]) <- c("x", "y", "z")
-  }
-}
-
-data_exp5_named <- data
+```{r}
+# names(data) <- paste0("person_", 1:10)
+#  
+# for (per in c(1:length(data))) {
+#   names(data[[per]]) <- paste0("repetion_", 1:10)
+#   for (rep in c(1:length(data[[per]]))) {
+#     colnames(data[[per]][[rep]]) <- c("x", "y", "z")
+#   }
+# }
+# 
+# data_exp5_named <- data
 ```
+
 
 
 ## Data long
 Indlæser data som en 'lang' matrix med 7 kolonner - En med experiment, en med person, en med repition, en med tid og tre med X Y Z.
 ```{r data_long}
-data <- get(load("armdata.Rdata"))
-persons <- 10
-repetitions <- 10
-experiements <- 16
-time <- 100
-data_long <- c()
-for (i in 1:experiements){
-  #print(i)
-  exp <- data[i][[1]]
-
-  for (j in 1:persons){
-    pers <- exp[[j]]
-
-    for (k in 1:repetitions){
-      rep <- pers[[k]]
-
-      data_long <- rbind(data_long, (cbind(rep(i,100),rep(j,100), rep(k,100), c(1:100) , rep)))
-
-    }
-
-  }
-
-}
-
-data_long <- as.data.frame(data_long)
-names(data_long) <- c("Experiment", "Person", "Repetition", "Time", "X", "Y", "Z")
-data_long$Experiment <- as.factor(data_long$Experiment)
-data_long$Person <- as.factor(data_long$Person)
-data_long$Repetition <- as.factor(data_long$Repetition)
-data_long$Time <- as.factor(data_long$Time)
-
-data_exp5 <- subset(data_long, Experiment == 5)
-head(data_exp5)
-#which(is.na(data_exp5), arr.ind = T)
-
-
-data_long <- na.locf(data_long)
-data_exp5 <- na.locf(data_exp5)
-write.csv(data_exp5, "Data_exp5.csv")
+# data <- get(load("armdata.Rdata"))
+# persons <- 10
+# repetitions <- 10
+# experiements <- 16
+# time <- 100
+# data_long <- c()
+# for (i in 1:experiements){
+#   #print(i)
+#   exp <- data[i][[1]]
+# 
+#   for (j in 1:persons){
+#     pers <- exp[[j]]
+# 
+#     for (k in 1:repetitions){
+#       rep <- pers[[k]]
+# 
+#       data_long <- rbind(data_long, (cbind(rep(i,100),rep(j,100), rep(k,100), c(1:100) , rep)))
+# 
+#     }
+# 
+#   }
+# 
+# }
+# 
+# data_long <- as.data.frame(data_long)
+# names(data_long) <- c("Experiment", "Person", "Repetition", "Time", "X", "Y", "Z")
+# data_long$Experiment <- as.factor(data_long$Experiment)
+# data_long$Person <- as.factor(data_long$Person)
+# data_long$Repetition <- as.factor(data_long$Repetition)
+# data_long$Time <- as.factor(data_long$Time)
+# 
+# data_exp5 <- subset(data_long, Experiment == 5)
+# head(data_exp5)
+# #which(is.na(data_exp5), arr.ind = T)
+# 
+# 
+# data_long <- na.locf(data_long)
+# data_exp5 <- na.locf(data_exp5)
+# write.csv(data_exp5, "Data_exp5.csv")
 ```
 
 
 
 
 
-# Plots 3D!!!
+## Plots of data
 
-```{r 3D_plots}
-library(rgl)
-#cbind(x,y,z)
-plot3d(data_exp5_named$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+### One repetition
 
-#open3d()
-lines3d(x = data_long$X, y = data_long$Y, z = data_long$Z, col = data_long$Experiment, legend = T)
-#legend3d("bottomright", c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"))
+Plot of the first repetition for person 1 in experiment 5
 
-#plot3d(data_exp5, type = 'p', col = person, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+```{r single_rep}
+rgl::plot3d(data_exp5$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+```
 
+### Multiple repetions
 
+All trajectories from all experiments
 
+```{r all_trajectories}
+cat("All trajectories where each color is an experiment: ")
+rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, col = data_long$experiment)
+
+cat("All trajectories where each color is a person: ")
+rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, col = data_long$person)
+```
+
+Trajectories for experiment 5
+
+```{r trajectories_exp5}
+cat("Trajectories for experiment 5 where each color is a person: ")
+rgl::lines3d(x = data_long_exp5$x, y = data_long_exp5$y, z = data_long_exp5$z, col = data_long_exp5$person)
 ```
 
 
-# Standardization
+
+
+# 1. Machine learning
+
+## Standardization of data wide
 
 ```{r standardisation}
-data_wide[colnames] <- scale(data_wide[colnames])
-
-#str(data_wide[,-c(1,2)])
-
+data_wide_exp5_norm <- data_wide_exp5
+data_wide_exp5_norm[,-c(1, 2)] <- scale(data_wide_exp5[,-c(1, 2)])
 ```
 
-
-
-# Machine learning
 
 ##  PCA - test
-Methods
 
-```{r pca}
-library(ggplot2)
+### Method 1: SVD
 
-w <- sort(rep(1:10,10))
-svd <- svd(data_wide[3:302])
-PC <- as.matrix(data_wide[3:302]) %*% svd$v
-ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = as.factor(w))) + geom_point()
+```{r svd}
+svd <- svd(data_wide_exp5_norm[,3:302])
+PC <- as.matrix(data_wide_exp5_norm[,3:302]) %*% svd$v
+
+# plot
+ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = data_wide_exp5$person, legend = "Person")) + 
+  geom_point() +
+  scale_colour_discrete(name = "Person")
+
+# head of diagonals
+cat("Head of diagonals from SVD: \n")
 head(svd$d)
 
-
-
-pca <- prcomp(x = data_wide[,-c(1,2)], scale. = T, center = T)
-pca_summary <- summary(pca)
-pca_summary$importance[,1:10]
-
-plot(pca$x, col = data_wide$persons)
 ```
 
+### Method 2: built in pca
 
+```{r pca}
+pca <- prcomp(x = data_wide_exp5[,-c(1,2)], scale. = T, center = T)
+pca_summary <- summary(pca)
 
+cat("Importance of the first 10 principal components")
+pca_summary$importance[,1:10]
 
-
-
-
-
-
-
-
-
+```
 
 
 # Cross-Validation KNN (1 Neighbour) & Logistic Regression
 *Korrekt brug af McNemar? Binomial eller med continuity correction * \
 *Konfidens intervaller - Beta funktion?*
 ```{r}
-data_CV <- data_wide
+# data_CV <- data_wide_exp5
+# 
+# N <- nrow(data_CV)
+# s <- sample(N)
+# K_fold <- N
+# 
+# K <- c(1:20)
+# 
+# loss <- matrix(rep(NA, length(K) * K_fold), nrow = length(K))
+# random_index <- split(sample(c(1:N),N), c(1:K_fold))
+#  
+# for (i in c(1:K_fold)){
+#   i <- 1
+#   print(i)
+#   f <- c(1:K_fold)[-i]
+#   train_index <- Reduce(c,random_index[f])
+#   test_index <- Reduce(c,random_index[i])
+# 
+#   train_set <- data_CV[train_index,]
+#   test_set <- data_CV[test_index,]
+#   
+#   for (k in K){
+#     pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = k)
+#     loss_KNN <- mean(pred_KNN != test_set$person)
+#     loss[k,i] <- loss_KNN
+#   
+#   }
+#   
+# }
+# loss <- as.data.frame(loss)
+# 
+# plot(apply(loss,1,mean))
+```
+
+
+```{r determine_k}
+set.seed(-1825)
+data_CV <- data_wide_exp5
 
 N <- nrow(data_CV)
 s <- sample(N)
@@ -297,36 +361,80 @@ K_fold <- N
 K <- c(1:20)
 
 loss <- matrix(rep(NA, length(K) * K_fold), nrow = length(K))
-random_index <- split(sample(c(1:N),N), c(1:K_fold))
+random_index <- sample(c(1:100), 100)
+
  
 for (i in c(1:K_fold)){
-  print(i)
-  f <- c(1:K_fold)[-i]
-  train_index <- Reduce(c,random_index[f])
-  test_index <- Reduce(c,random_index[i])
-
-  train_set <- data_CV[train_index,]
-  test_set <- data_CV[test_index,]
+  print(paste0("Fold ", i))
+  
+  train_set <- data_CV[random_index[-i],]
+  test_set <- data_CV[random_index[i],]
   
   for (k in K){
-  pred_KNN <- knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$persons, k = k)
-  loss_KNN <- mean(pred_KNN != test_set$persons)
-  loss[k,i] <- loss_KNN
-  
+    pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = k)
+    loss_KNN <- mean(pred_KNN != test_set$person)
+    loss[k,i] <- loss_KNN
   }
-  
 }
+
 loss <- as.data.frame(loss)
 
 plot(apply(loss,1,mean))
 ```
 
+
+
+
+
 ```{r CV}
-library(class)
-library(nnet)
+# library(class)
+# library(nnet)
+# set.seed(-1825)
+# 
+# data_CV <- data_wide_exp5
+# 
+# N <- nrow(data_CV)
+# s <- sample(N)
+# K_fold <- N
+# 
+# K <- c(1:20)
+# 
+# accuracy <- c()
+# random_index <- split(sample(c(1:N),N), c(1:K_fold))
+#  
+# for (i in c(1:K_fold)){
+#   print(i)
+#   f <- c(1:K_fold)[-i]
+#   train_index <- Reduce(c,random_index[f])
+#   test_index <- Reduce(c,random_index[i])
+# 
+#   train_set <- data_CV[train_index,]
+#   test_set <- data_CV[test_index,]
+#   
+#   pred_KNN <- knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$persons, k = 1)
+#   acc_KNN <- pred_KNN == test_set$persons
+#   
+#   LogReg <- multinom(data = train_set[,-2], formula = persons ~ ., MaxNWts = 10000)
+#   pred_LogReg <- predict(LogReg, test_set[,-c(1,2)])
+#   acc_LogReg <- pred_LogReg == test_set$persons
+# 
+#   
+#   accuracy <- rbind(accuracy, cbind(acc_KNN, acc_LogReg))
+# 
+#   
+# }
+# accuracy <- as.data.frame(accuracy)
+# apply(accuracy,2,mean)
+
+
+```
+
+
+
+```{r CV_models}
 set.seed(-1825)
 
-data_CV <- data_wide
+data_CV <- data_wide_exp5
 
 N <- nrow(data_CV)
 s <- sample(N)
@@ -335,23 +443,20 @@ K_fold <- N
 K <- c(1:20)
 
 accuracy <- c()
-random_index <- split(sample(c(1:N),N), c(1:K_fold))
+random_index <- sample(c(1:100), 100)
  
 for (i in c(1:K_fold)){
-  print(i)
+  print(paste0("Fold ", i))
   f <- c(1:K_fold)[-i]
-  train_index <- Reduce(c,random_index[f])
-  test_index <- Reduce(c,random_index[i])
-
-  train_set <- data_CV[train_index,]
-  test_set <- data_CV[test_index,]
+  train_set <- data_CV[random_index[-i],]
+  test_set <- data_CV[random_index[i],]
   
-  pred_KNN <- knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$persons, k = 1)
-  acc_KNN <- pred_KNN == test_set$persons
+  pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = 1)
+  acc_KNN <- pred_KNN == test_set$person
   
-  LogReg <- multinom(data = train_set[,-2], formula = persons ~ ., MaxNWts = 10000)
+  LogReg <- nnet::multinom(data = train_set[,-2], formula = person ~ ., MaxNWts = 10000)
   pred_LogReg <- predict(LogReg, test_set[,-c(1,2)])
-  acc_LogReg <- pred_LogReg == test_set$persons
+  acc_LogReg <- pred_LogReg == test_set$person
 
   
   accuracy <- rbind(accuracy, cbind(acc_KNN, acc_LogReg))
@@ -363,9 +468,12 @@ apply(accuracy,2,mean)
 
 
 ```
+
+
+
 ## McNemar
 
-```{r McNemar}
+```{r evaluating_models}
 n_11 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == T)
 n_12 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == F)
 n_21 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == T)
@@ -382,9 +490,6 @@ cat("Confidence interval for logistic regression")
 CI_LogReg
 qbeta(0.975, sum(accuracy$acc_LogReg) + 0.5, 100 - sum(accuracy$acc_LogReg)+0.5)
 
-CI_KNN
-2* pbinom(min(n_12,n_21) ,n_12 + n_21 , 1/2)
-t
 cat("Confidence interval for KNN")
 CI_KNN
 
@@ -395,9 +500,10 @@ cat("P-value obtained via a binomial dsitribution")
 ```
 
 
-# Punkt 2 - Statistik
+# 2. Statistik
 Test om der er signifikant effekt af 'experiment' på de resulterende kurver.
 
+## Mean curve 
 
 Beregner mean-curve for hvert eksperiment.
 ```{r}
@@ -405,7 +511,7 @@ mean_curves <- c()
 for (i in 1:16){
   for (j in 1:100){
     
-    mean_point <- apply(subset(subset(data_long, Experiment == i), Time == j)[,c(5:7)], 2, mean)
+    mean_point <- apply(subset(subset(data_long, experiment == i), time == j)[,c(5:7)], 2, mean)
     mean_curves <- rbind(mean_curves, c(i,j,mean_point))
     
   }
@@ -413,12 +519,13 @@ for (i in 1:16){
 
 mean_curves <- as.data.frame(mean_curves)
 
-library(rgl)
-#cbind(x,y,z)
-plot3d(mean_curves$X, mean_curves$Y, mean_curves$Z, type = 'p', col = mean_curves$V1, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+cat("Plot of the mean curves")
+rgl::plot3d(mean_curves$x, mean_curves$y, mean_curves$z, type = 'p', col = mean_curves$V1, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
   
 ```
 
+
+### t-test between all experiments
 
 Mange one sample t-test, hvor længden imellem hvert punkt i hvert eksperiment sammenlignes.
 Nul-hypotese: den gennemsnitlige afstande imellem punkterne i to kurver er 0.
@@ -461,17 +568,19 @@ head(p_vals)
 plot(sort(p_vals$`Adjusted P-values`))
 ```
 
-# ANOVA
+## ANOVA
+
+Boxplots and anova table
 
 ```{r}
 
 par(mfrow = c(1,3))
-boxplot(data_long$X ~ data_long$Experiment)
-boxplot(data_long$Y ~ data_long$Experiment)
-boxplot(data_long$Z ~ data_long$Experiment)
+boxplot(data_long$x ~ data_long$experiment)
+boxplot(data_long$y ~ data_long$experiment)
+boxplot(data_long$z ~ data_long$experiment)
 
 
-model_anova <- aov(data = data_long, formula = Z ~ Experiment )
+model_anova <- aov(data = data_long, formula = z ~ experiment )
 summary(model_anova)
 summary.lm(model_anova)
 
@@ -479,10 +588,13 @@ head(TukeyHSD(model_anova))
 
 ```
 
-## ANOVA in each direction
+### Min-max ANOVA
+
+Each curve is compressed down to containing only the difference in its max and min in each direction. An ANOVA is then carried out for each direction. The p-values for each direction is adjusted by different measures of adjustment and put in a data frame.
 
 ```{r}
 diff_data <- data_long %>% 
+  tidyr::gather(direction, value, x, y, z) %>% 
   dplyr::group_by(experiment, person, repetition, direction) %>% 
   dplyr::summarise(diff = max(value, na.rm = T) - min(value, na.rm = T)) %>% 
   tidyr::spread(direction, diff) %>% 
