@@ -13,6 +13,9 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 
+#set seed
+set.seed(-1825)
+
 # load packages
 library(magrittr)
 library(ggplot2)
@@ -22,7 +25,7 @@ library(ggplot2)
 
 #DATA
 
-## Indlæser data
+## Loading data
 
 ```{r dataload}
 data <- get(load("armdata.Rdata"))
@@ -49,9 +52,9 @@ for (expe in c(1:length(data))){
 
 ## Data long
 
-Indlæser data som en 'lang' matrix med 7 kolonner - En med experiment, en med person, en med repition, en med tid og tre med X Y Z.
+Reads data as a "long" matrix with 7 columns - one with experiment, one with person, one with repetition, one with time and three with x, y and z.
 
-NA's fjernes ved at indsætte værdien for den næste i rækken, da det er en projektilbevægelse og disse to værdier dermed må ligge tæt på hinanden.
+NA's are removed by inserting the value from the next one in the row, as we are looking at trajectories and these two values therefore must be close to each other.
 
 ```{r data_long}
 data_long <- as.data.frame(data)
@@ -88,7 +91,7 @@ str(data_long)
 
 ## Data wide
 
-Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
+Reads data as a "wide" matrix with 302 columns, one with person, one with repetition and 300 with x, y and z
 
 ```{r data_wide}
 data_wide <- data_long %>%
@@ -119,124 +122,6 @@ head(data_long_exp5)
 cat("\nHead of data wide for experiment 5, with the dimensions: ", dim(data_wide_exp5))
 head(data_wide_exp5)
 ```
-
-
-
-
-
-Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
-```{r data_wide, echo=FALSE}
-# library(zoo)
-# data <- get(load("armdata.Rdata"))[5][[1]]
-# pers1 <- data[[1]][[2]]
-# person <- 10
-# rep <- 10
-# x <- c()
-# y <- c()
-# z <- c()
-# for (p in 1:person){
-#   for (r in 1:rep){
-# 
-#     longitude <- data[[p]][[r]][,1]
-#     x <- cbind(x,data[[p]][[r]][,1])
-#   }
-# }
-# for (p in 1:person){
-#   for (r in 1:rep){
-# 
-#     transversal <- data[[p]][[r]][,2]
-#     y <- cbind(y,data[[p]][[r]][,2])
-#   }
-# }
-# for (p in 1:person){
-#   for (r in 1:rep){
-# 
-#     vertical <- data[[p]][[r]][,3]
-#     z <- cbind(z,data[[p]][[r]][,3])
-#   }
-# }
-# 
-# x <- t(na.locf(x, fromLast = T))
-# y <- t(na.locf(y, fromLast = T))
-# z <- t(na.locf(z, fromLast = T))
-# 
-# colnames <- c( paste0("x_", 1:100),paste0("y_", 1:100),paste0("z_", 1:100))
-# persons <- c(rep("person1", 10),rep("person2", 10),rep("person3", 10),rep("person4", 10),rep("person5", 10),rep("person6", 10),rep("person7", 10),rep("person8", 10),rep("person9", 10),rep("person10", 10))
-# reps <- rep(1:10,10)
-# 
-# data_wide <- as.data.frame(cbind(x,y,z), row.names = 1:100)
-# names(data_wide) <- colnames
-# 
-# data_wide <- cbind(persons,reps,data_wide)
-# head(data_wide)
-```
-
-
- 
-### Rename data
-
-```{r}
-# names(data) <- paste0("person_", 1:10)
-#  
-# for (per in c(1:length(data))) {
-#   names(data[[per]]) <- paste0("repetion_", 1:10)
-#   for (rep in c(1:length(data[[per]]))) {
-#     colnames(data[[per]][[rep]]) <- c("x", "y", "z")
-#   }
-# }
-# 
-# data_exp5_named <- data
-```
-
-
-
-## Data long
-Indlæser data som en 'lang' matrix med 7 kolonner - En med experiment, en med person, en med repition, en med tid og tre med X Y Z.
-```{r data_long}
-# data <- get(load("armdata.Rdata"))
-# persons <- 10
-# repetitions <- 10
-# experiements <- 16
-# time <- 100
-# data_long <- c()
-# for (i in 1:experiements){
-#   #print(i)
-#   exp <- data[i][[1]]
-# 
-#   for (j in 1:persons){
-#     pers <- exp[[j]]
-# 
-#     for (k in 1:repetitions){
-#       rep <- pers[[k]]
-# 
-#       data_long <- rbind(data_long, (cbind(rep(i,100),rep(j,100), rep(k,100), c(1:100) , rep)))
-# 
-#     }
-# 
-#   }
-# 
-# }
-# 
-# data_long <- as.data.frame(data_long)
-# names(data_long) <- c("Experiment", "Person", "Repetition", "Time", "X", "Y", "Z")
-# data_long$Experiment <- as.factor(data_long$Experiment)
-# data_long$Person <- as.factor(data_long$Person)
-# data_long$Repetition <- as.factor(data_long$Repetition)
-# data_long$Time <- as.factor(data_long$Time)
-# 
-# data_exp5 <- subset(data_long, Experiment == 5)
-# head(data_exp5)
-# #which(is.na(data_exp5), arr.ind = T)
-# 
-# 
-# data_long <- na.locf(data_long)
-# data_exp5 <- na.locf(data_exp5)
-# write.csv(data_exp5, "Data_exp5.csv")
-```
-
-
-
-
 
 ## Plots of data
 
@@ -293,7 +178,7 @@ ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = data_wide_exp5$person
   geom_point() +
   scale_colour_discrete(name = "Person")
 
-# head of diagonals
+
 cat("Head of diagonals from SVD: \n")
 head(svd$d)
 
@@ -314,44 +199,8 @@ pca_summary$importance[,1:10]
 # Cross-Validation KNN (1 Neighbour) & Logistic Regression
 *Korrekt brug af McNemar? Binomial eller med continuity correction * \
 *Konfidens intervaller - Beta funktion?*
-```{r}
-# data_CV <- data_wide_exp5
-# 
-# N <- nrow(data_CV)
-# s <- sample(N)
-# K_fold <- N
-# 
-# K <- c(1:20)
-# 
-# loss <- matrix(rep(NA, length(K) * K_fold), nrow = length(K))
-# random_index <- split(sample(c(1:N),N), c(1:K_fold))
-#  
-# for (i in c(1:K_fold)){
-#   i <- 1
-#   print(i)
-#   f <- c(1:K_fold)[-i]
-#   train_index <- Reduce(c,random_index[f])
-#   test_index <- Reduce(c,random_index[i])
-# 
-#   train_set <- data_CV[train_index,]
-#   test_set <- data_CV[test_index,]
-#   
-#   for (k in K){
-#     pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = k)
-#     loss_KNN <- mean(pred_KNN != test_set$person)
-#     loss[k,i] <- loss_KNN
-#   
-#   }
-#   
-# }
-# loss <- as.data.frame(loss)
-# 
-# plot(apply(loss,1,mean))
-```
-
 
 ```{r determine_k}
-set.seed(-1825)
 data_CV <- data_wide_exp5
 
 N <- nrow(data_CV)
@@ -383,57 +232,7 @@ plot(apply(loss,1,mean))
 ```
 
 
-
-
-
-```{r CV}
-# library(class)
-# library(nnet)
-# set.seed(-1825)
-# 
-# data_CV <- data_wide_exp5
-# 
-# N <- nrow(data_CV)
-# s <- sample(N)
-# K_fold <- N
-# 
-# K <- c(1:20)
-# 
-# accuracy <- c()
-# random_index <- split(sample(c(1:N),N), c(1:K_fold))
-#  
-# for (i in c(1:K_fold)){
-#   print(i)
-#   f <- c(1:K_fold)[-i]
-#   train_index <- Reduce(c,random_index[f])
-#   test_index <- Reduce(c,random_index[i])
-# 
-#   train_set <- data_CV[train_index,]
-#   test_set <- data_CV[test_index,]
-#   
-#   pred_KNN <- knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$persons, k = 1)
-#   acc_KNN <- pred_KNN == test_set$persons
-#   
-#   LogReg <- multinom(data = train_set[,-2], formula = persons ~ ., MaxNWts = 10000)
-#   pred_LogReg <- predict(LogReg, test_set[,-c(1,2)])
-#   acc_LogReg <- pred_LogReg == test_set$persons
-# 
-#   
-#   accuracy <- rbind(accuracy, cbind(acc_KNN, acc_LogReg))
-# 
-#   
-# }
-# accuracy <- as.data.frame(accuracy)
-# apply(accuracy,2,mean)
-
-
-```
-
-
-
 ```{r CV_models}
-set.seed(-1825)
-
 data_CV <- data_wide_exp5
 
 N <- nrow(data_CV)
