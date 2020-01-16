@@ -6,12 +6,12 @@ output:
   html_document:
     toc: true
     toc_float: true
+    df_print: paged
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-
+knitr::opts_chunk$set(echo = FALSE)
 # load packages
 
 library(zoo)
@@ -33,17 +33,17 @@ library(magrittr)
 Rename data
 
 ```{r rename data}
-# names(data) <- paste0("experiment_", 1:16)
-# 
-# for (expe in c(1:length(data))){
-#   names(data[[expe]]) <- paste0("person_", 1:10)
-#   for (per in c(1:length(data[[expe]]))) {
-#     names(data[[expe]][[per]]) <- paste0("repetion_", 1:10)
-#     for (rep in c(1:length(data[[expe]][[per]]))) {
-#       colnames(data[[expe]][[per]][[rep]]) <- c("x", "y", "z")
-#     }
-#   }
-# }
+names(data) <- paste0("experiment_", 1:16)
+
+for (expe in c(1:length(data))){
+  names(data[[expe]]) <- paste0("person_", 1:10)
+  for (per in c(1:length(data[[expe]]))) {
+    names(data[[expe]][[per]]) <- paste0("repetion_", 1:10)
+    for (rep in c(1:length(data[[expe]][[per]]))) {
+      colnames(data[[expe]][[per]][[rep]]) <- c("x", "y", "z")
+    }
+  }
+}
 
 
 ```
@@ -51,16 +51,16 @@ Rename data
 ## Data long
 
 ```{r data long}
-# data_long <- as.data.frame(data)
-# 
-# data_long <- data_long %>% 
-#   tidyr::gather(key = "col_name", value = "value") %>% 
-#   tidyr::separate(col_name, c("experiment", "person", "repetition", "direction"), sep = "\\.") %>% 
-#   dplyr::mutate(experiment = stringr::str_remove(string = experiment, pattern = ".*\\_")) %>% 
-#   dplyr::mutate(person = stringr::str_remove(string = person, pattern = ".*\\_")) %>%
-#   dplyr::mutate(repetition = stringr::str_remove(string = repetition, pattern = ".*\\_")) %>%
-#   dplyr::mutate(direction = direction) %>%
-#   dplyr::mutate(time = rep(1:100, dim(data_long)[2]))
+data_long <- as.data.frame(data)
+
+data_long <- data_long %>%
+  tidyr::gather(key = "col_name", value = "value") %>%
+  tidyr::separate(col_name, c("experiment", "person", "repetition", "direction"), sep = "\\.") %>%
+  dplyr::mutate(experiment = stringr::str_remove(string = experiment, pattern = ".*\\_")) %>%
+  dplyr::mutate(person = stringr::str_remove(string = person, pattern = ".*\\_")) %>%
+  dplyr::mutate(repetition = stringr::str_remove(string = repetition, pattern = ".*\\_")) %>%
+  dplyr::mutate(direction = direction) %>%
+  dplyr::mutate(time = rep(1:100, dim(data_long)[2]))
 # 
 # cat("Head of data long")
 # head(data_long)
@@ -109,7 +109,7 @@ Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repe
 
 
 Indlæser data til en 'bred' matrix med 302 kolonner, en med person, en med repetition og 300 med X Y Z.
-```{r}
+```{r data_wide, echo=FALSE}
 data <- get(load("armdata.Rdata"))[5][[1]]
 pers1 <- data[[1]][[2]]
 person <- 10
@@ -154,14 +154,10 @@ data_wide <- cbind(persons,reps,data_wide)
 head(data_wide)
 ```
 
-```{r}
-#tidyr::unnest(as.data.frame(data_exp5_named))
-```
-
 
 ### Rename data
 
-```{r}
+```{r rename_data}
 names(data) <- paste0("person_", 1:10)
  
 for (per in c(1:length(data))) {
@@ -177,7 +173,7 @@ data_exp5_named <- data
 
 ## Data long
 Indlæser data som en 'lang' matrix med 7 kolonner - En med experiment, en med person, en med repition, en med tid og tre med X Y Z.
-```{r}
+```{r data_long}
 data <- get(load("armdata.Rdata"))
 persons <- 10
 repetitions <- 10
@@ -185,7 +181,7 @@ experiements <- 16
 time <- 100
 data_long <- c()
 for (i in 1:experiements){
-  print(i)
+  #print(i)
   exp <- data[i][[1]]
 
   for (j in 1:persons){
@@ -210,8 +206,8 @@ data_long$Repetition <- as.factor(data_long$Repetition)
 data_long$Time <- as.factor(data_long$Time)
 
 data_exp5 <- subset(data_long, Experiment == 5)
-data_exp5
-which(is.na(data_exp5), arr.ind = T)
+head(data_exp5)
+#which(is.na(data_exp5), arr.ind = T)
 
 
 data_long <- na.locf(data_long)
@@ -225,43 +221,45 @@ write.csv(data_exp5, "Data_exp5.csv")
 
 # Plots 3D!!!
 
-```{r}
+```{r 3D_plots}
 library(rgl)
 #cbind(x,y,z)
 plot3d(data_exp5_named$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
 
 lines3d(x = data_long$X, y = data_long$Y, z = data_long$Z, col = data_long$Experiment)
 
-summary(data_exp5)
 
 ```
 
 
 # Standardization
 
-```{r}
+```{r standardisation}
 data_wide[colnames] <- scale(data_wide[colnames])
 
 #str(data_wide[,-c(1,2)])
 pca <- prcomp(x = data_wide[,-c(1,2)], scale. = T, center = T)
-summary(pca)
+pca_summary <- summary(pca)
+pca_summary$importance[,1:10]
 
 plot(pca$x, col = data_wide$persons)
 ```
-# PCA - test
+
+
 
 # Machine learning
 
+##  PCA - test
 Methods
 
-```{r}
+```{r pca}
 library(ggplot2)
 
 w <- sort(rep(1:10,10))
 svd <- svd(data_wide[3:302])
 PC <- as.matrix(data_wide[3:302]) %*% svd$v
 ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = as.factor(w))) + geom_point()
-svd$d
+head(svd$d)
 ```
 
 
@@ -314,7 +312,7 @@ loss <- as.data.frame(loss)
 plot(apply(loss,1,mean))
 ```
 
-```{r}
+```{r CV}
 library(class)
 library(nnet)
 set.seed(-1825)
@@ -354,22 +352,35 @@ for (i in c(1:K_fold)){
 accuracy <- as.data.frame(accuracy)
 apply(accuracy,2,mean)
 
+
+```
+## McNemar
+
+```{r McNemar}
 n_11 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == T)
 n_12 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == F)
 n_21 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == T)
 n_22 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == F)
 contingency <- matrix(c(n_11, n_21, n_12, n_22),nrow = 2)
 
-t <- mcnemar.test(contingency, correct = T)
+mc_nemar_result <- mcnemar.test(contingency, correct = T)
 CI_KNN <- DescTools::BinomCI(sum(accuracy$acc_KNN), 100, method = "jeffrey")
 CI_LogReg <- DescTools::BinomCI(sum(accuracy$acc_LogReg), 100, method = "jeffrey")
+
+cat("Confidence interval for logistic regression")
 CI_LogReg
 qbeta(0.975, sum(accuracy$acc_LogReg) + 0.5, 100 - sum(accuracy$acc_LogReg)+0.5)
 
 CI_KNN
 2* pbinom(min(n_12,n_21) ,n_12 + n_21 , 1/2)
 t
+cat("Confidence interval for KNN")
+CI_KNN
 
+cat("Result of McNemars test")
+mc_nemar_result
+cat("P-value obtained via a binomial dsitribution")
+2* pbinom(min(n_12,n_21) , n_12+n_21 , 1/2)
 ```
 
 
@@ -387,9 +398,6 @@ for (i in 1:16){
     mean_curves <- rbind(mean_curves, c(i,j,mean_point))
     
   }
-  
-  
-  
 }
 
 mean_curves <- as.data.frame(mean_curves)
@@ -405,7 +413,7 @@ Mange one sample t-test, hvor længden imellem hvert punkt i hvert eksperiment s
 Nul-hypotese: den gennemsnitlige afstande imellem punkterne i to kurver er 0.
 Resultatet giver en dataframe rækker svarene til sammenligning af samtlige kombinationer af de 16 eksperimenter.
 Konfidens intervaller. \
-*One sample t-test med afstand i mellem punkter? *
+*One sample t-test med afstand i mellem punkter? - Næh, det må man ikke *
 *ANOVA - Forskel i mean af X, Y og Z eksperimenterne imellem*
 
 
@@ -431,12 +439,13 @@ for (i in 1:nrow(dist_df)){
   
 }
 
-test$conf.int
 p_vals <- as.data.frame(p_vals)
 names(p_vals) <- c("Experiments","Lower", "Upper", "P-value")
 
 p_vals$`P-value` <- as.double(levels(p_vals$`P-value`))
 p_vals["Adjusted P-values"] <- p.adjust(p_vals$`P-value`, method = "hochberg")
+
+head(p_vals)
 plot(sort(p_vals$`Adjusted P-values`))
 ```
 
@@ -454,10 +463,49 @@ model_anova <- aov(data = data_long, formula = Z ~ Experiment )
 summary(model_anova)
 summary.lm(model_anova)
 
-?pairwise.t.test
-
-TukeyHSD(model_anova)
+head(TukeyHSD(model_anova))
 
 ```
 
+## ANOVA in each direction
+
+```{r}
+library(dplyr)
+
+diff_data <-data_long %>% 
+  group_by(experiment, person, repetition, direction) %>% 
+  summarise(diff = max(value, na.rm = T) - min(value, na.rm = T)) %>% 
+  tidyr::spread(direction, diff) %>% 
+  ungroup() %>% 
+  mutate(experiment = as.factor(experiment)) 
+  
+
+lm_x <- lm(data = diff_data, x ~ experiment)
+lm_y <- lm(data = diff_data, y ~ experiment)
+lm_z <- lm(data = diff_data, z ~ experiment)
+
+anova_x <- anova(lm_x)
+anova_y <- anova(lm_y)
+anova_z <- anova(lm_z)
+
+p_vals_normal <- c(x = anova_x$`Pr(>F)`[1], y = anova_y$`Pr(>F)`[1], z = anova_z$`Pr(>F)`[1])
+p_vals_hoch <- p.adjust(p_vals_normal, method = "hochberg")
+p_vals_bonf <- p.adjust(p_vals_normal, method = "bonferroni")
+p_vals_BH <- p.adjust(p_vals_normal, method = "BH")
+
+
+p_vals_anova <- data.frame(normal = p_vals_normal, hochberg = p_vals_hoch, bonferroni = p_vals_bonf, BH = p_vals_BH )
+
+rm(p_vals_normal, p_vals_hoch, p_vals_bonf, p_vals_BH )
+
+p_vals_anova
+
+diff_data
+
+group_by(experiment) %>% filter(experiment == 1) %>% plot(x) 
+
+diff_data$x
+
+plot(diff_data["experiment" == 1,]$x)
+```
 
