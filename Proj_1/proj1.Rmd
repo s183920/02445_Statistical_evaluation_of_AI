@@ -280,17 +280,50 @@ svd$d
 # Cross-Validation KNN (1 Neighbour) & Logistic Regression
 *Korrekt brug af McNemar? Binomial eller med continuity correction * \
 *Konfidens intervaller - Beta funktion?*
+```{r}
+data_CV <- data_wide
+
+N <- nrow(data_CV)
+s <- sample(N)
+K_fold <- N
+
+K <- c(1:20)
+
+loss <- matrix(rep(NA, length(K) * K_fold), nrow = length(K))
+random_index <- split(sample(c(1:N),N), c(1:K_fold))
+ 
+for (i in c(1:K_fold)){
+  print(i)
+  f <- c(1:K_fold)[-i]
+  train_index <- Reduce(c,random_index[f])
+  test_index <- Reduce(c,random_index[i])
+
+  train_set <- data_CV[train_index,]
+  test_set <- data_CV[test_index,]
+  
+  for (k in K){
+  pred_KNN <- knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$persons, k = k)
+  loss_KNN <- mean(pred_KNN != test_set$persons)
+  loss[k,i] <- loss_KNN
+  
+  }
+  
+}
+loss <- as.data.frame(loss)
+
+plot(apply(loss,1,mean))
+```
 
 ```{r}
 library(class)
 library(nnet)
-
+set.seed(-1825)
 
 data_CV <- data_wide
 
 N <- nrow(data_CV)
 s <- sample(N)
-K_fold <- 10
+K_fold <- N
 
 K <- c(1:20)
 
@@ -331,9 +364,11 @@ t <- mcnemar.test(contingency, correct = T)
 CI_KNN <- DescTools::BinomCI(sum(accuracy$acc_KNN), 100, method = "jeffrey")
 CI_LogReg <- DescTools::BinomCI(sum(accuracy$acc_LogReg), 100, method = "jeffrey")
 CI_LogReg
-CI_KNN
-2* pbinom(max(n_12,n_21) ,s , 1/2)
+qbeta(0.975, sum(accuracy$acc_LogReg) + 0.5, 100 - sum(accuracy$acc_LogReg)+0.5)
 
+CI_KNN
+2* pbinom(min(n_12,n_21) ,n_12 + n_21 , 1/2)
+t
 
 ```
 
@@ -415,7 +450,7 @@ boxplot(data_long$Y ~ data_long$Experiment)
 boxplot(data_long$Z ~ data_long$Experiment)
 
 
-model_anova <- aov(data = data_long, formula = X ~ Experiment )
+model_anova <- aov(data = data_long, formula = Z ~ Experiment )
 summary(model_anova)
 summary.lm(model_anova)
 
