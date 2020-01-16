@@ -126,6 +126,7 @@ lines(x<-c(1:200),(alfa1 * x )/(beta1 + x),col='red')
 plot(data = data_fos , yield ~ olsenP)
 lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
 ```
+
 ```{r}
 lm3 <- lm(data = data_fos, formula = DGT ~ location)
 summary(lm3)
