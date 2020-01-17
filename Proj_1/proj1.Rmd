@@ -234,7 +234,7 @@ plot(apply(loss,1,mean))
 
 ```{r CV_models}
 data_CV <- data_wide_exp5
-
+set.seed(-1825)
 N <- nrow(data_CV)
 s <- sample(N)
 K_fold <- N
