@@ -134,7 +134,15 @@ start = list(alfa = 90 , beta = 1))
 phos.model.olsenP <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_fos,
 start = list(alfa = 90 , beta = 1))
 
+phos.model.DGT_mean <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_grouped,
+start = list(alfa = 90 , beta = 1))
 
+phos.model.olsenP_mean <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_grouped,
+start = list(alfa = 90 , beta = 1))
+
+phos.model.DGT_lm <- lm(yield ~ DGT , data = data_fos)
+
+phos.model.olsenP_lm <- lm(yield ~ olsenP, data = data_fos)
 
 summary(phos.model.DGT)
 summary(phos.model.olsenP)
@@ -152,15 +160,31 @@ summary(phos.model.olsenP)
 ### Plots of model coefficients
 
 ```{r}
-par(mfrow=(c(1,2)))
+par(mfrow=(c(3,2)))
 alfa1 <- coef(phos.model.DGT)[1]
 beta1 <- coef(phos.model.DGT)[2]
 alfa2 <- coef(phos.model.olsenP)[1]
 beta2 <- coef(phos.model.olsenP)[2]
+alfa3 <- coef(phos.model.DGT_mean)[1]
+beta3 <- coef(phos.model.DGT_mean)[2]
+alfa4 <- coef(phos.model.olsenP_mean)[1]
+beta4 <- coef(phos.model.olsenP_mean)[2]
+
+
 plot(data = data_fos , yield ~ DGT)
 lines(x<-c(1:200),(alfa1 * x )/(beta1 + x),col='red')
 plot(data = data_fos , yield ~ olsenP)
 lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
+plot(data = data_grouped , yield ~ DGT)
+lines(x<-c(1:200),(alfa3 * x )/(beta3 + x),col='red')
+plot(data = data_grouped , yield ~ olsenP)
+lines(x<-c(1:200),(alfa4 * x )/(beta4 + x),col='red')
+
+
+plot(data = data_fos , yield ~ DGT)
+abline(coef(phos.model.DGT_lm))
+plot(data = data_fos , yield ~ olsenP)
+abline(coef(phos.model.olsenP_lm))
 ```
 
 
@@ -169,7 +193,7 @@ lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
 Test errorrate med leave one out cross validation
 
 ```{r}
-data_CV <- data_fos
+data_CV <- data_grouped
 
 N <- nrow(data_CV)
 s <- sample(N)
@@ -192,21 +216,40 @@ for (i in c(1:K_fold)){
   model_cv_olsenP <- phos.model.DGT_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = train_set,
                         start = list(alfa = 90 , beta = 1))
   
+  lm_model_DGT <- lm(data = data_fos, formula = yield ~ DGT)
+  lm_model_olsenP <- lm(data = data_fos, formula = yield ~ olsenP)
+  
+  
   pred_DGT <- predict(model_cv_DGT, test_set)
   pred_olsenP <- predict(model_cv_olsenP, test_set)
   
-  error_DGT <- sum((test_set$yield - pred_DGT)^2)
-  error_olsenP <- sum((test_set$yield - pred_olsenP)^2)
-  loss <- rbind(loss,c(error_DGT, error_olsenP))
+  pred_lmDGT <- predict(lm_model_DGT, test_set)
+  pred_lmolsenP <- predict(lm_model_olsenP, test_set)
+  
+  error_DGT <- (test_set$yield - pred_DGT)^2
+  error_olsenP <- (test_set$yield - pred_olsenP)^2
+  
+  error_lmDGT <- (test_set$yield - pred_lmDGT)^2 
+  error_lmolsenP <- (test_set$yield - pred_lmolsenP)^2
+
+  loss <- rbind(loss,c(error_DGT, error_olsenP, error_lmDGT, error_lmolsenP))
   
 }
-Z <- loss[,1] - loss[,2]
+loss <- as.data.frame(loss)
+names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
+apply(loss,2,mean)
+
+Z <- loss$nlDGT - loss$nlolsenP
+
+loss$nlDGT
 t.test(Z)
-t.test(loss[,1], loss[,2], paired =T)
+t.test(loss$nlDGT, loss$nlolsenP, paired =T)
 qqnorm(Z)
 qqline(Z)
 
-
+loss$nlDGT
+loss$nlolsenP
+t.test(loss$nlDGT, loss$nlolsenP, paired =T)
 ```
 
 ### Bootstrap - loss
@@ -217,6 +260,7 @@ Non parametric bootstrapping. Sampler fra forskel i loss af de to modeller. Udre
 ```{r}
 z_bootstrap <- apply( replicate(10000, sample(Z, replace = T)), 2, mean)
 hist(z_bootstrap)
+abline(v = mean(Z))
 alfa <- 0.05
 quantile(z_bootstrap, c(alfa/2,1-alfa/2))
 ```
@@ -228,17 +272,19 @@ Concatenates loss af DGT og olsenP. Bestemmers størrelseordenen af denne vektor
 Derefter laves permutationer af vektor med 1-72 og rank sum af de 36 første bestemmes og sammenlignes med rank sum for DGT
 
 ```{r}
-Z_RST <- order(c(loss[,1], loss[,2]))
-DGT_RS <- sum(Z_RST[1:36])
+Z_RST <- order(c(loss$nlDGT, loss$nlolsenP))
+DGT_RS <- sum(Z_RST[1:length(Z_RST)/2])
 RST <- c()
 for (i in 1:1000){
-  RST_sample <- sample(72)
-  RST <- c(RST,sum(RST_sample[1:36]))
+  RST_sample <- sample(length(Z_RST))
+  RST <- c(RST,sum(RST_sample[1:length(Z_RST)/2]))
 }
 p_val <- 2*mean(DGT_RS>RST)
-p_val
+
 hist(RST)
-Z_RST
+abline(v = DGT_RS)
+p_val
+
 ```
 
 # Influence of phosphorous
@@ -246,23 +292,138 @@ Z_RST
 ## Permutation test
 
 ```{r}
-n <- 500
+data_permutation <- data_grouped
+n <- 1000
 results_DGT <- c()
 results_olsenP <- c()
-for (i in 1:n){
-  permutation <- sample(nrow(data_fos))
-  
-  phos.model.DGT_perm <- nls(yield[permutation] ~ alfa * DGT/(beta + DGT) , data = data_fos,
-                        start = list(alfa = 90 , beta = 1))
+results_DGT_LM <- c()
+results_olsenP_LM <- c()
 
-  phos.model.olsenP_perm <- nls(yield[permutation] ~ alfa * olsenP/(beta + olsenP) , data = data_fos,
-                            start = list(alfa = 90 , beta = 1))
+for (i in 1:n){
+  permutation <- sample(nrow(data_permutation))
+  
+  phos.model.DGT_perm <- nls(yield[permutation] ~ alfa * DGT/(beta + DGT) , data = data_permutation,
+                        start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+
+  phos.model.olsenP_perm <- nls(yield[permutation] ~ alfa * olsenP/(beta + olsenP) , data = data_permutation,
+                            start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  
+  phos.model.DGT_lm_perm <- lm(yield[permutation] ~ DGT, data = data_permutation)
+  phos.model.olsenP_lm_perm <- lm(yield[permutation] ~ olsenP, data = data_permutation)
   
   results_DGT <- rbind(results_DGT, coef(phos.model.DGT_perm))
   results_olsenP <- rbind(results_olsenP, coef(phos.model.olsenP_perm))
+  results_DGT_LM <- rbind(results_DGT_LM, coef(phos.model.DGT_lm_perm))
+  results_olsenP_LM <- rbind(results_olsenP_LM, coef(phos.model.olsenP_lm_perm))
 }
-sum(beta1 < results_DGT[,2])
+
+par(mfrow = c(1,2))
+hist(results_DGT[,1])
+abline(v = alfa1)
+
+hist(results_DGT[,2])
+abline(v = beta1)
+
+hist(results_DGT_LM[,1])
+abline(v = coef(phos.model.DGT_lm[1]))
+
+
 mean(results_DGT[,2])
 alfa1
 beta1
 ```
+
+
+```{r}
+data_fos
+model <- lm(data = data_fos, formula = yield ~ location)
+summary(model)
+anova(model)
+par(mfrow = c(1,2))
+boxplot(data_fos$yield ~ data_fos$location)
+plot(data_fos$yield ~ data_fos$location, ylim = c(0,100))
+points(data_fos$yield ~ data_fos$location, col = 2)
+coef(model)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### LEAVE 4 OUT!!!!
+
+
+
+
+
+
+```{r}
+data_CV <- data_fos
+level <- levels(data_CV$location)
+N <- length(level)
+
+s <- sample(N)
+K_fold <- N
+
+
+accuracy <- c()
+random_index <- split(sample(c(1:N),N), c(1:K_fold))
+loss <- c()
+
+for (i in c(1:K_fold)){
+
+
+  train_set <- subset(data_CV, location != level[i])
+  test_set <- subset(data_CV, location == level[i])
+  model_cv_DGT <- phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = train_set,
+                        start = list(alfa = 90 , beta = 1))
+  
+  model_cv_olsenP <- phos.model.DGT_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = train_set,
+                        start = list(alfa = 90 , beta = 1))
+  
+  lm_model_DGT <- lm(data = data_fos, formula = yield ~ DGT)
+  lm_model_olsenP <- lm(data = data_fos, formula = yield ~ olsenP)
+  
+  
+  pred_DGT <- predict(model_cv_DGT, test_set)
+  pred_olsenP <- predict(model_cv_olsenP, test_set)
+
+  pred_lmDGT <- predict(lm_model_DGT, test_set)
+  pred_lmolsenP <- predict(lm_model_olsenP, test_set)
+
+  
+  error_DGT <- (test_set$yield - pred_DGT)^2
+  error_olsenP <- (test_set$yield - pred_olsenP)^2
+  
+  error_lmDGT <- (test_set$yield - pred_lmDGT)^2 
+  error_lmolsenP <- (test_set$yield - pred_lmolsenP)^2
+
+  loss <- rbind(loss,cbind(error_DGT, error_olsenP, error_lmDGT, error_lmolsenP))
+  loss
+}
+loss <- as.data.frame(loss)
+names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
+apply(loss,2,mean)
+
+t.test(loss$nlDGT, loss$nlolsenP, paired =T )
+```
+
+

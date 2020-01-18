@@ -251,6 +251,11 @@ plot(apply(loss,1,mean))
 
 ```{r CV_models}
 set.seed(-1825)
+data_CV <- data_wide_exp5
+set.seed(-1825)
+N <- nrow(data_CV)
+s <- sample(N)
+K_fold <- N
 
 if ("acc_-1825.rds" %in% list.files()){
   accuracy <- readRDS("1.rds")
