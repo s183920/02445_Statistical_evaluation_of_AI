@@ -168,6 +168,20 @@ plot(data = data_fos , yield ~ olsenP)
 abline(coef(phos.model.olsenP_lm))
 ```
 
+### Parametric bootstrapping - Konfidensintervaller for bestemmelse af parametrene
+```{r}
+l <- summary(phos.model.DGT)
+summary(phos.model.DGT)
+
+
+summary(phos.model.olsenP)
+```
+
+
+
+```{r}
+
+```
 
 ## Predicting yield
 
@@ -221,7 +235,7 @@ names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
 apply(loss,2,mean)
 
 Z <- loss$nlDGT - loss$nlolsenP
-
+mean(Z)
 loss$nlDGT
 t.test(Z)
 t.test(loss$nlDGT, loss$nlolsenP, paired =T)
@@ -273,8 +287,8 @@ p_val
 ## Permutation test
 
 ```{r}
-data_permutation <- data_grouped
-n <- 1000
+data_permutation <- data_fos
+n <- 10000
 results_DGT <- c()
 results_olsenP <- c()
 results_DGT_LM <- c()
@@ -300,19 +314,17 @@ for (i in 1:n){
 }
 
 par(mfrow = c(1,2))
-hist(results_DGT[,1])
+hist(results_DGT[,1], xlim = c(50,100))
 abline(v = alfa1)
 
 hist(results_DGT[,2])
 abline(v = beta1)
 
-hist(results_DGT_LM[,1])
-abline(v = coef(phos.model.DGT_lm[1]))
+hist(results_DGT_LM[,2], xlim = c(-0.5,0.5))
+abline(v = coef(phos.model.DGT_lm)[2])
+coef(phos.model.DGT_lm)[2]
 
-
-mean(results_DGT[,2])
-alfa1
-beta1
+plot(data_permutation$yield[permutation] ~ data_permutation$DGT)
 ```
 
 
@@ -405,6 +417,78 @@ names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
 apply(loss,2,mean)
 
 t.test(loss$nlDGT, loss$nlolsenP, paired =T )
+Z <- loss$nlDGT - loss$nlolsenP
+qqnorm(Z)
+qqline(Z)
+
+loss
+qqnorm(loss$nlolsenP)
+qqline(loss$nlolsenP)
+t.test(Z)
+214
+
+mean(loss$nlDGT) + sd(loss$nlDGT)/sqrt(36) * qt(0.975, 35)
 ```
 
+### Bootstrapping for MSE confidence intervals
+```{r}
+a <- 0.05
+bootstap_DGT <- replicate(10000,mean(sample(loss$nlDGT, replace = T)))
+bootstap_olsenP <- replicate(10000,mean(sample(loss$nlolsenP, replace = T)))
+bootstrap_Z <- replicate(10000,mean(sample(Z, replace = T)))
+quantile(bootstap_olsenP, c(a/2, 1-a/2))
+quantile(bootstap_DGT, c(a/2, 1-a/2))
+quantile(bootstrap_Z, c(a/2, 1-a/2))
+```
+
+
+### Permutation - med hensyn til grupper måske ... 
+
+```{r}
+set.seed(1997)
+n <- 10000
+data_permutation <- data_fos
+
+permutation_list <- split(data_permutation$yield, data_permutation$location)
+
+results <- c()
+
+for (i in 1:n){
+  permutation <- sample(9)
+  data_permutation$yield = unlist(permutation_list[permutation])
+  phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_permutation,
+                        start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T, minFactor = 0))
+  
+  phos.model.olsenP_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_permutation,
+                            start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  
+
+  
+  results <- rbind(results, c(coef(phos.model.DGT_perm), coef(phos.model.olsenP_perm)))
+
+}
+results <- as.data.frame(results)
+names(results) <- c("a-DGT", "b-DGT", "a-olsenP", "b-olsenP")
+
+par(mfrow = c(2,2))
+hist(results$`a-DGT`)
+abline(v = c(quantile(results$`a-DGT`, c(a/2,1-a)),alfa1), col = c(1,2,3))
+(alfa1-mean(results$`a-DGT`))/sd(results$`a-DGT`)
+
+hist(results$`a-olsenP`)
+abline(v = alfa2)
+
+hist(results$`b-DGT`)
+abline(v = beta1)
+
+hist(results$`b-olsenP`)
+abline(v = beta2)
+
+mean(beta1 < results$`b-DGT`)
+mean(beta2 < results$`b-olsenP`)
+alfa1
+quantile(results$`a-DGT`, c(a/2,1-a/2))
+alfa1
+```
 
