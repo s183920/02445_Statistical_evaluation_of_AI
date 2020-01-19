@@ -139,10 +139,21 @@ All trajectories from all experiments
 
 ```{r all_trajectories}
 cat("All trajectories where each color is an experiment: ")
-rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, col = data_long$experiment)
+
+rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, col = data_long$experiment, alpha = 1, xlab = 'x', ylab = 'y', zlab = 'z', lwd = .1, legend = T)
+rgl::title3d("Trajectories")
+rgl::axes3d(edges = "bbox", xlab = "x", ylab = "y", zlab = "z", pos = c(0,0,0))
+rgl::legend3d("bottom", data_long$experiment)
+
+rgl::segment3d(x = data_long$x, y = data_long$y, z = data_long$z, col = data_long$experiment, alpha = .3)
 
 cat("All trajectories where each color is a person: ")
 rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, col = data_long$person)
+rgl::axes3d(labels = T, edges = "bbox")
+
+
+
+
 ```
 
 Trajectories for experiment 5
@@ -152,7 +163,12 @@ cat("Trajectories for experiment 5 where each color is a person: ")
 rgl::lines3d(x = data_long_exp5$x, y = data_long_exp5$y, z = data_long_exp5$z, col = data_long_exp5$person)
 ```
 
+### 2D representation
 
+```{r}
+ggplot(data_long_exp5, aes(x = x, y = y, col = person)) +
+  geom_line()
+you suck```
 
 
 # 1. Machine learning
@@ -201,6 +217,7 @@ pca_summary$importance[,1:10]
 *Konfidens intervaller - Beta funktion?*
 
 ```{r determine_k}
+set.seed(-1825)
 data_CV <- data_wide_exp5
 
 N <- nrow(data_CV)
@@ -233,36 +250,51 @@ plot(apply(loss,1,mean))
 
 
 ```{r CV_models}
+set.seed(-1825)
 data_CV <- data_wide_exp5
 set.seed(-1825)
 N <- nrow(data_CV)
 s <- sample(N)
 K_fold <- N
 
-K <- c(1:20)
+if ("acc_-1825.rds" %in% list.files()){
+  accuracy <- readRDS("1.rds")
+} else{
+  data_CV <- data_wide_exp5
 
-accuracy <- c()
-random_index <- sample(c(1:100), 100)
- 
-for (i in c(1:K_fold)){
-  print(paste0("Fold ", i))
-  f <- c(1:K_fold)[-i]
-  train_set <- data_CV[random_index[-i],]
-  test_set <- data_CV[random_index[i],]
+  N <- nrow(data_CV)
+  s <- sample(N)
+  K_fold <- N
   
-  pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = 1)
-  acc_KNN <- pred_KNN == test_set$person
+  K <- c(1:20)
   
-  LogReg <- nnet::multinom(data = train_set[,-2], formula = person ~ ., MaxNWts = 10000)
-  pred_LogReg <- predict(LogReg, test_set[,-c(1,2)])
-  acc_LogReg <- pred_LogReg == test_set$person
+  accuracy <- c()
+  random_index <- sample(c(1:100), 100)
+   
+  for (i in c(1:K_fold)){
+    print(paste0("Fold ", i))
+    f <- c(1:K_fold)[-i]
+    train_set <- data_CV[random_index[-i],]
+    test_set <- data_CV[random_index[i],]
+    
+    pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = 1)
+    acc_KNN <- pred_KNN == test_set$person
+    
+    LogReg <- nnet::multinom(data = train_set[,-2], formula = person ~ ., MaxNWts = 10000)
+    pred_LogReg <- predict(LogReg, test_set[,-c(1,2)])
+    acc_LogReg <- pred_LogReg == test_set$person
+  
+    
+    accuracy <- rbind(accuracy, cbind(acc_KNN, acc_LogReg))
 
   
-  accuracy <- rbind(accuracy, cbind(acc_KNN, acc_LogReg))
-
+  }
+  accuracy <- as.data.frame(accuracy)
   
+  saveRDS(accuracy, "acc_-1825.rds")
 }
-accuracy <- as.data.frame(accuracy)
+
+
 apply(accuracy,2,mean)
 
 
@@ -424,5 +456,6 @@ rm(p_vals_normal, p_vals_hoch, p_vals_bonf, p_vals_BH )
 
 p_vals_anova
 
+xtable::xtable(p_vals_anova)
 ```
 

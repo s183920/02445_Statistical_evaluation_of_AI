@@ -2,10 +2,12 @@
 title: "Project 2"
 author: "Lukas Leindals"
 date: "15/1/2020"
-output: 
+output:
+  word_document:
+    toc: yes
   html_document:
-    toc: true
-    toc_float: true
+    toc: yes
+    toc_float: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -76,7 +78,8 @@ ggplot(tidyr::gather(data_grouped, "key", "value", -c(location, yield)), aes(val
 Comparison plot
 
 ```{r}
-GGally::ggpairs(data_fos, columns = c("DGT", "olsenP", "yield"))
+GGally::ggpairs(data_fos, columns = c("DGT", "olsenP", "yield"), title = "Data summary")
+ggsave("data_plot.jpg")
 ```
 
 Boxplots
@@ -87,7 +90,15 @@ boxplot(yield ~location, data = data_fos)
 boxplot(DGT ~ location, data = data_fos)
 boxplot(olsenP ~ location, data = data_fos)
 
-data_fos %>% tidyr::gather("key", "value", -location) %>% dplyr::filter(key == "yield") %>% ggplot(aes(x = location, y = value, fill = key)) + geom_boxplot() 
+data_fos %>% 
+  tidyr::gather("key", "value", -location) %>%
+  dplyr::filter(key == "yield") %>% 
+  dplyr::rename(yield = value) %>% 
+  ggplot(aes(x = location, y = yield)) + 
+    geom_boxplot(fill = 'green') 
+ggsave("boxplot_yield_location.jpg")
+
+
 ```
 
 Scatter plots
@@ -135,6 +146,14 @@ phos.model.olsenP_lm <- lm(yield ~ olsenP, data = data_fos)
 
 summary(phos.model.DGT)
 summary(phos.model.olsenP)
+
+
+# lm_august <- nls(yield ~ a * olsenP/(b+olsenP), data = data_fos, start = list(b = max(data_fos$yield)/2, a = max(data_fos$yield)))
+# anova(lm_august)
+# summary(lm_august)
+# coef(lm_august)
+# lm_august
+# phos.model.olsenP
 
 ```
 
