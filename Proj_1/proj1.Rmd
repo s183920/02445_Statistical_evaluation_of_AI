@@ -457,5 +457,8 @@ rm(p_vals_normal, p_vals_hoch, p_vals_bonf, p_vals_BH )
 p_vals_anova
 
 xtable::xtable(p_vals_anova)
+
+anova_z
+
 ```
 
