@@ -1,6 +1,6 @@
 ---
 title: "Project 2"
-author: "Lukas Leindals"
+author: "Peter, Lukas & Rasmus"
 date: "15/1/2020"
 output:
   word_document:
@@ -115,17 +115,15 @@ plot(data = data_fos , yield ~ DGT)
 
 ```{r}
 lm1 <- lm(data = data_fos, formula = yield ~ DGT)
-anova(lm1)
 summary(lm1)
 
 
 lm2 <- lm(data = data_fos, formula = yield ~ olsenP)
-anova(lm2)
 summary(lm2)
 
-lm3 <- lm(data = data_fos, formula = yield ~ location)
-anova(lm3)
-summary(lm3)
+# lm3 <- lm(data = data_fos, formula = yield ~ location)
+# anova(lm3)
+# summary(lm3)
 
 
 phos.model.DGT <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_fos,
@@ -136,6 +134,7 @@ start = list(alfa = 90 , beta = 1))
 
 phos.model.DGT_mean <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_grouped,
 start = list(alfa = 90 , beta = 1))
+
 
 phos.model.olsenP_mean <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_grouped,
 start = list(alfa = 90 , beta = 1))
@@ -171,32 +170,33 @@ alfa4 <- coef(phos.model.olsenP_mean)[1]
 beta4 <- coef(phos.model.olsenP_mean)[2]
 
 
-plot(data = data_fos , yield ~ DGT)
-lines(x<-c(1:200),(alfa1 * x )/(beta1 + x),col='red')
-plot(data = data_fos , yield ~ olsenP)
-lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
-plot(data = data_grouped , yield ~ DGT)
-lines(x<-c(1:200),(alfa3 * x )/(beta3 + x),col='red')
-plot(data = data_grouped , yield ~ olsenP)
-lines(x<-c(1:200),(alfa4 * x )/(beta4 + x),col='red')
+# plot(data = data_fos , yield ~ DGT)
+# lines(x<-c(1:200),(alfa1 * x )/(beta1 + x),col='red')
+# plot(data = data_fos , yield ~ olsenP)
+# lines(x<-c(1:200),(alfa2 * x )/(beta2 + x),col='red')
+# plot(data = data_grouped , yield ~ DGT)
+# lines(x<-c(1:200),(alfa3 * x )/(beta3 + x),col='red')
+# plot(data = data_grouped , yield ~ olsenP)
+# lines(x<-c(1:200),(alfa4 * x )/(beta4 + x),col='red')
+# 
+# 
+# plot(data = data_fos , yield ~ DGT)
+# abline(coef(phos.model.DGT_lm))
+# plot(data = data_fos , yield ~ olsenP)
+# abline(coef(phos.model.olsenP_lm))
 
-
-plot(data = data_fos , yield ~ DGT)
-abline(coef(phos.model.DGT_lm))
-plot(data = data_fos , yield ~ olsenP)
-abline(coef(phos.model.olsenP_lm))
-
-
+beta_olsenP
 # ggplot
+rep_p <- nrow(data_fos)
 data_plot <- data_fos %>% 
   tidyr::gather("method", "value", DGT, olsenP) %>% 
   dplyr::mutate(method = as.factor(method),
-                slope = c(rep(coef(phos.model.DGT_lm)[2], 36), 
-                          rep(coef(phos.model.olsenP_lm)[2], 36)),
-                intercept = c(rep(coef(phos.model.DGT_lm)[1], 36), 
-                              rep(coef(phos.model.olsenP_lm)[1], 36)),
-                alfas = c(rep(alfa1, 36), rep(alfa2, 36)),
-                betas = c(rep(beta1, 36), rep(beta2, 36)))
+                slope = c(rep(coef(phos.model.DGT_lm)[2], rep_p), 
+                          rep(coef(phos.model.olsenP_lm)[2], rep_p)),
+                intercept = c(rep(coef(phos.model.DGT_lm)[1], rep_p), 
+                              rep(coef(phos.model.olsenP_lm)[1], rep_p)),
+                alfas = c(rep(alfa_DGT, rep_p), rep(alfa_olsenP, rep_p)),
+                betas = c(rep(beta_DGT, rep_p), rep(beta_olsenP, rep_p)))
 
 levels(data_plot$method) <- c("DGT [µg/L]", "olsenP [mg/100 g]")
 
@@ -213,54 +213,69 @@ ggplot(data_plot, aes(x = value, y = yield)) +
 
 ggsave("model_comparison.png")
 
-data_plot
-  
+
 ```
 
-### Parametric bootstrapping - Konfidensintervaller for bestemmelse af parametrene
+### Bootstrapping - Konfidensintervaller for bestemmelse af parametrene
+Både parametrisk og ikke parametrisk
 ```{r}
-N <- 10000
+N <- 1000
 set.seed(2020)
-residuals_DGT <- summary(phos.model.DGT)$residuals
-residuals_olsenP <- summary(phos.model.DGT)$residuals
 
-pred_DGT <- predict(phos.model.DGT)
-pred_olsenP <- predict(phos.model.olsenP)
+residual_SD_DGT <- sd(summary(phos.model.DGT_mean)$residuals)
+residual_SD_olsenP <- sd(summary(phos.model.olsenP_mean)$residuals)
+
 BS_coef <- c()
+
+data_NPBS <- data_fos
+data_PBS <- data_grouped
+BS_list_Yield <- split(data_BS$yield, data_BS$location)
+BS_list_DGT <- split(data_BS$DGT, data_BS$location)
+BS_list_olsenP <- split(data_BS$olsenP, data_BS$location)
+pred_DGT <- predict(phos.model.DGT_mean)
+pred_olsenP <- predict(phos.model.olsenP_mean)
+
 for (i in 1:N){
-  print(i)
-  BS_DGT <- pred_DGT + sample(residuals_DGT, replace = T)
-  BS_olsenP<- pred_olsenP + sample(residuals_olsenP, replace = T)
+  if (i %% 100 == 0){
+    print(i)
+  }
+  BS_DGT_parametric <- pred_DGT + rnorm(9, 0, residual_SD_DGT)
+  BS_olsenP_parametric <- pred_olsenP + rnorm(9, 0, residual_SD_olsenP)
   
-  BS_DGT2 <- pred_DGT + rnorm(36, 0, sqrt(mean(l$residuals^2)))
-  BS_olsenP2 <- pred_olsenP + rnorm(36, 0, sqrt(mean(l$residuals^2)))
-  
-  data_BS <- data.frame(BS_DGT = BS_DGT, BS_DGT2 = BS_DGT2, BS_olsenP = BS_olsenP, BS_olsenP2 = BS_olsenP2, DGT = data_fos$DGT, olsenP = data_fos$olsenP)
-  
-  
-  phos.model.DGT_BS <- nls(BS_DGT ~ alfa * DGT/(beta + DGT), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
-  
-  phos.model.olsenP_BS <- nls(BS_olsenP ~ alfa * olsenP/(beta + olsenP), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
-  
-    phos.model.DGT_BS2 <- nls(BS_DGT2 ~ alfa * DGT/(beta + DGT), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
-  
-  phos.model.olsenP_BS2 <- nls(BS_olsenP2 ~ alfa * olsenP/(beta + olsenP), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  s <- sample(9, replace = T)
+  data_NPBS$yield_nonP <- unlist(BS_list_Yield[s])
+  data_NPBS$DGT_nonP <- unlist(BS_list_DGT[s])
+  data_NPBS$olsenP_nonP <- unlist(BS_list_olsenP[s])
   
   
-  BS_coef <- rbind(BS_coef, c(coef(phos.model.DGT_BS),coef(phos.model.olsenP_BS), coef(phos.model.DGT_BS2), coef(phos.model.olsenP_BS2)))
+  data_PBS$yield_P_DGT <- BS_DGT_parametric
+  data_PBS$yield_P_olsenP <- BS_olsenP_parametric
+
+  
+  
+  phos.model.DGT_P_BS <- nls(yield_P_DGT~ alfa * DGT/(beta + DGT), data = data_PBS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  phos.model.olsenP_P_BS <- nls(yield_P_olsenP ~ alfa * olsenP/(beta + olsenP), data = data_PBS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+    phos.model.DGT_NP_BS <- nls(yield_nonP ~ alfa * DGT_nonP/(beta + DGT_nonP), data = data_NPBS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  phos.model.olsenP_NP_BS <- nls(yield_nonP ~ alfa * olsenP_nonP/(beta + olsenP_nonP), data = data_NPBS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  
+  BS_coef <- rbind(BS_coef, c(coef(phos.model.DGT_P_BS),coef(phos.model.olsenP_P_BS), coef(phos.model.DGT_NP_BS), coef(phos.model.olsenP_NP_BS)))
   
   
 }
 BS_coef <- as.data.frame(BS_coef)
 names(BS_coef) <- c("alfa_DGT","beta_DGT","alfa_olsenP","beta_olsenP","alfa_DGT2","beta_DGT2","alfa_olsenP2","beta_olsenP2")
 par(mfrow=c(2,2))
-hist(BS_coef$alfa_DGT2)
+hist(BS_coef$alfa_DGT)
 abline(v = alfa_DGT, col = 3)
-hist(BS_coef$beta_DGT2)
+hist(BS_coef$beta_DGT)
 abline(v = beta_DGT, col = 3)
-hist(BS_coef$alfa_olsenP2)
+hist(BS_coef$alfa_olsenP)
 abline(v = alfa_olsenP, col = 3)
-hist(BS_coef$beta_olsenP2)
+hist(BS_coef$beta_olsenP)
 abline(v = beta_olsenP, col = 3)
 
 CIs <- data.frame(cbind(rbind(quantile(BS_coef$alfa_DGT, c(0.025, 0.975)), 
@@ -272,17 +287,11 @@ quantile(BS_coef$beta_DGT2, c(0.025, 0.975)),
 quantile(BS_coef$alfa_olsenP2, c(0.025, 0.975)),
 quantile(BS_coef$beta_olsenP2, c(0.025, 0.975)))),
 row.names = c("alfa_DGT","beta_DGT", "alfa_olsenP", "beta_olsenP"))
-names(CIs) <- c("Residual 2.5 %", "Residual 97.5 %","Normal 2.5 %", "Normal 97.5 %")
+names(CIs) <- c("Paramtric 2.5 %", "Parametric 97.5 %","Normal 2.5 %", "Normal 97.5 %")
 CIs
 
-plot(predict(phos.model.DGT) + rnorm(36, 0, sqrt(mean(l$residuals^2))) ~ data_fos$DGT)
-l$residuals
-mean(l$residuals^2)
-plot(l$residuals)
-plot(l$residuals[-36] ~ l$residuals[-1])
-cor(l$residuals[-36], l$residuals[-1])
-
 ```
+
 
 
 
@@ -309,10 +318,10 @@ for (i in c(1:K_fold)){
   train_set <- subset(data_CV, location != level[i])
   test_set <- subset(data_CV, location == level[i])
   model_cv_DGT <- phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = train_set,
-                        start = list(alfa = 90 , beta = 1))
+                        start = list(alfa = 90 , beta = 1),na.action = na.exclude)
   
   model_cv_olsenP <- phos.model.DGT_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = train_set,
-                        start = list(alfa = 90 , beta = 1))
+                        start = list(alfa = 90 , beta = 1), na.action = na.exclude)
   
   lm_model_DGT <- lm(data = data_fos, formula = yield ~ DGT)
   lm_model_olsenP <- lm(data = data_fos, formula = yield ~ olsenP)
@@ -336,20 +345,20 @@ for (i in c(1:K_fold)){
 }
 loss <- as.data.frame(loss)
 names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
-apply(loss,2,mean)
+apply(loss,2,mean, na.rm = T)
 
 t.test(loss$nlDGT, loss$nlolsenP, paired =T )
 Z <- loss$nlDGT - loss$nlolsenP
 qqnorm(Z)
 qqline(Z)
-
+plot(Z)
 loss
 qqnorm(loss$nlolsenP)
 qqline(loss$nlolsenP)
-t.test(Z)
-214
-
+loss$nlDGT
+loss$nlolsenP
 mean(loss$nlDGT) + sd(loss$nlDGT)/sqrt(36) * qt(0.975, 35)
+
 ```
 
 
@@ -442,7 +451,7 @@ for (i in sample(c(1:K_fold))){
 loss <- as.data.frame(loss)
 names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
 apply(loss,2,mean)
-
+qqnorm(Z)
 t.test(loss$nlDGT, loss$nlolsenP, paired =T )
 ```
 
@@ -468,45 +477,65 @@ for (i in 1:n){
   phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_permutation,
                         start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T, minFactor = 0))
   
-  phos.model.olsenP_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_permutation,
-                            start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  # phos.model.olsenP_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_permutation,
+  #                           start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  # 
+  # lm_model_DGT_perm <- lm(data = data_permutation, formula = yield ~ DGT)
+  # lm_model_olsenP_perm <- lm(data = data_permutation, formula = yield ~ olsenP)
+  results <- rbind(results, c(coef(phos.model.DGT_perm)))
   
-  lm_model_DGT_perm <- lm(data = data_permutation, formula = yield ~ DGT)
-  lm_model_olsenP_perm <- lm(data = data_permutation, formula = yield ~ olsenP)
-
-  
-  results <- rbind(results, c(coef(phos.model.DGT_perm), coef(phos.model.olsenP_perm), coef(lm_model_DGT_perm), coef(lm_model_olsenP_perm)))
+  # results <- rbind(results, c(coef(phos.model.DGT_perm), coef(phos.model.olsenP_perm), coef(lm_model_DGT_perm), coef(lm_model_olsenP_perm)))
 
 }
 results <- as.data.frame(results)
-names(results) <- c("a-DGT", "b-DGT", "a-olsenP", "b-olsenP", "int. DGT", "slope DGT", "int. olsenP", "slope olsenP")
+names(results) <- c("alpha", "beta")
+results
+# names(results) <- c("a-DGT", "b-DGT", "a-olsenP", "b-olsenP", "int. DGT", "slope DGT", "int. olsenP", "slope olsenP")
 
+P_a_perm_DGT <- 2*mean(alfa_DGT < results$alpha)
+# P_a_perm_olsenP <- 2*mean(alfa_olsenP < results$`a-olsenP`)
+P_b_perm_DGT <- 2*mean(beta_DGT < results$beta)
+# P_b_perm_olsenP <- 2*mean(beta_olsenP < results$`b-olsenP`)
 
-P_a_perm_DGT <- 2*mean(alfa_DGT < results$`a-DGT`)
-P_a_perm_olsenP <- 2*mean(alfa_olsenP < results$`a-olsenP`)
-P_b_perm_DGT <- 2*mean(beta_DGT < results$`b-DGT`)
-P_b_perm_olsenP <- 2*mean(beta_olsenP < results$`b-olsenP`)
+CI_a_DGT_perm <- quantile(results$alpha, c(a/2, 1-a/2))
+# CI_a_olsenP_perm <- quantile(results$`a-olsenP`, c(a/2, 1-a/2))
+CI_b_DGT_perm <- quantile(results$beta, c(a/2, 1-a/2))
+# CI_b_olsenP_perm <- quantile(results$`b-olsenP`, c(a/2, 1-a/2))
 
-CI_a_DGT_perm <- quantile(results$`a-DGT`, c(a/2, 1-a/2))
-CI_a_olsenP_perm <- quantile(results$`a-olsenP`, c(a/2, 1-a/2))
-CI_b_DGT_perm <- quantile(results$`b-DGT`, c(a/2, 1-a/2))
-CI_b_olsenP_perm <- quantile(results$`b-olsenP`, c(a/2, 1-a/2))
+# par(mfrow = c(1,2))
+# ggplot(data = results)
+# hist(results$`a-DGT`)
+# abline(v = c(CI_a_DGT_perm, alfa_DGT), col = c(2,2,1))
 
-par(mfrow = c(2,2))
-hist(results$`a-DGT`)
-abline(v = c(CI_a_DGT_perm, alfa_DGT), col = c(2,2,1))
+# hist(results$`a-olsenP`)
+# abline(v = c(CI_a_olsenP_perm,alfa_olsenP), col = c(2,2,1))
 
-hist(results$`a-olsenP`)
-abline(v = c(CI_a_olsenP_perm,alfa_olsenP), col = c(2,2,1))
+# hist(results$`b-DGT`)
+# abline(v = c(CI_b_DGT_perm,beta_DGT), col = c(2,2,1))
 
-hist(results$`b-DGT`)
-abline(v = c(CI_b_DGT_perm,beta_DGT), col = c(2,2,1))
+df_vlines <- data.frame("alpha" = c(CI_a_DGT_perm,alfa_DGT), "beta" = c(CI_b_DGT_perm, beta_DGT )) %>% tidyr::gather()
+df_vlines
 
-hist(results$`b-olsenP`)
-abline(v = c(CI_b_olsenP_perm,beta_olsenP), col = c(2,2,1))
+results %>% tidyr::gather() %>% 
+    ggplot(aes(value)) + 
+    geom_histogram(fill = 'orange', alpha = 0.7)   + 
+    geom_vline(data = df_vlines, mapping = aes(xintercept = value, colour =  c('95% confidence Interval','95% confidence Interval','Observed value','95% confidence Interval','95% confidence Interval','Observed value')), show.legend = T, size = 1) +
+    facet_wrap(~key, scales = 'free', labeller = label_parsed ) +
+    xlab("Parameter Value") +
+    ylab("Count") +
+    theme(legend.title = element_blank(),
+          legend.position = 'bottom')
+    ggsave("PermutationTest.png")
+    
 
-p_vals_perm <- data.frame(a_DGT = c( CI_a_DGT_perm, alfa_DGT,P_a_perm_DGT), b_DGT = c( CI_b_DGT_perm, beta_DGT,P_b_perm_DGT), a_olsenP = c( CI_a_olsenP_perm,alfa_olsenP,P_a_perm_olsenP), b_olsenP = c(CI_b_olsenP_perm, beta_olsenP,P_b_perm_olsenP), row.names =c("2.5 %", "97.5 % ", "observed value", "p-value"))
+# hist(results$`b-olsenP`)
+# abline(v = c(CI_b_olsenP_perm,beta_olsenP), col = c(2,2,1))
+
+p_vals_perm <- data.frame(a_DGT = c( CI_a_DGT_perm, alfa_DGT,P_a_perm_DGT), b_DGT = c( CI_b_DGT_perm, beta_DGT,P_b_perm_DGT), row.names =c("2.5 %", "97.5 % ", "observed value", "p-value"))
 p_vals_perm
+
+# p_vals_perm <- data.frame(a_DGT = c( CI_a_DGT_perm, alfa_DGT,P_a_perm_DGT), b_DGT = c( CI_b_DGT_perm, beta_DGT,P_b_perm_DGT), a_olsenP = c( CI_a_olsenP_perm,alfa_olsenP,P_a_perm_olsenP), b_olsenP = c(CI_b_olsenP_perm, beta_olsenP,P_b_perm_olsenP), row.names =c("2.5 %", "97.5 % ", "observed value", "p-value"))
+# p_vals_perm
 ```
 
 
