@@ -185,6 +185,36 @@ plot(data = data_fos , yield ~ DGT)
 abline(coef(phos.model.DGT_lm))
 plot(data = data_fos , yield ~ olsenP)
 abline(coef(phos.model.olsenP_lm))
+
+
+# ggplot
+data_plot <- data_fos %>% 
+  tidyr::gather("method", "value", DGT, olsenP) %>% 
+  dplyr::mutate(method = as.factor(method),
+                slope = c(rep(coef(phos.model.DGT_lm)[2], 36), 
+                          rep(coef(phos.model.olsenP_lm)[2], 36)),
+                intercept = c(rep(coef(phos.model.DGT_lm)[1], 36), 
+                              rep(coef(phos.model.olsenP_lm)[1], 36)),
+                alfas = c(rep(alfa1, 36), rep(alfa2, 36)),
+                betas = c(rep(beta1, 36), rep(beta2, 36)))
+
+levels(data_plot$method) <- c("DGT [µg/L]", "olsenP [mg/100 g]")
+
+ggplot(data_plot, aes(x = value, y = yield)) +
+  geom_point() +
+  geom_abline(data = data_plot, mapping = aes(slope = slope, intercept = intercept, col = "Linear")) +
+  stat_smooth(method = 'nls', formula = 'y ~ alfa * x/(beta + x)',
+                method.args = list(start=list(alfa = 90 , beta = 1)), se=F, data = data_plot, mapping = aes(col = "Michaelis-Menten")) +
+  facet_wrap(~method, scales = "free") +
+  xlab("Bioavailable phosphorous") +
+  ylab("Yield [hkg/ha.]") +
+  theme(legend.title = element_blank()) +
+  theme(legend.position = "bottom")
+
+ggsave("model_comparison.png")
+
+data_plot
+  
 ```
 
 
@@ -287,12 +317,68 @@ p_val
 
 ```
 
+### LEAVE 4 OUT!!!!
+
+
+```{r}
+data_CV <- data_fos
+level <- levels(data_CV$location)
+N <- length(level)
+
+s <- sample(N)
+K_fold <- N
+
+
+#accuracy <- c()
+#random_index <- split(sample(c(1:N),N), c(1:K_fold))
+loss <- c()
+
+for (i in sample(c(1:K_fold))){
+  print(i)
+
+  train_set <- subset(data_CV, location != level[i])
+  test_set <- subset(data_CV, location == level[i])
+  model_cv_DGT <- phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = train_set,
+                        start = list(alfa = 90 , beta = 1))
+  
+  model_cv_olsenP <- phos.model.DGT_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = train_set,
+                        start = list(alfa = 90 , beta = 1))
+  
+  lm_model_DGT <- lm(data = data_fos, formula = yield ~ DGT)
+  lm_model_olsenP <- lm(data = data_fos, formula = yield ~ olsenP)
+  
+  
+  pred_DGT <- predict(model_cv_DGT, test_set)
+  pred_olsenP <- predict(model_cv_olsenP, test_set)
+
+  pred_lmDGT <- predict(lm_model_DGT, test_set)
+  pred_lmolsenP <- predict(lm_model_olsenP, test_set)
+
+  
+  error_DGT <- (test_set$yield - pred_DGT)^2
+  error_olsenP <- (test_set$yield - pred_olsenP)^2
+  
+  error_lmDGT <- (test_set$yield - pred_lmDGT)^2 
+  error_lmolsenP <- (test_set$yield - pred_lmolsenP)^2
+
+  loss <- rbind(loss,cbind(error_DGT, error_olsenP, error_lmDGT, error_lmolsenP))
+  loss
+}
+loss <- as.data.frame(loss)
+names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
+apply(loss,2,mean)
+
+t.test(loss$nlDGT, loss$nlolsenP, paired =T )
+```
+
+
+
 # Influence of phosphorous
 
 ## Permutation test
 
 ```{r}
-data_permutation <- data_grouped
+data_permutation <- data_fos
 n <- 1000
 results_DGT <- c()
 results_olsenP <- c()
@@ -352,78 +438,5 @@ coef(model)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### LEAVE 4 OUT!!!!
-
-
-
-
-
-
-```{r}
-data_CV <- data_fos
-level <- levels(data_CV$location)
-N <- length(level)
-
-s <- sample(N)
-K_fold <- N
-
-
-accuracy <- c()
-random_index <- split(sample(c(1:N),N), c(1:K_fold))
-loss <- c()
-
-for (i in c(1:K_fold)){
-
-
-  train_set <- subset(data_CV, location != level[i])
-  test_set <- subset(data_CV, location == level[i])
-  model_cv_DGT <- phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = train_set,
-                        start = list(alfa = 90 , beta = 1))
-  
-  model_cv_olsenP <- phos.model.DGT_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = train_set,
-                        start = list(alfa = 90 , beta = 1))
-  
-  lm_model_DGT <- lm(data = data_fos, formula = yield ~ DGT)
-  lm_model_olsenP <- lm(data = data_fos, formula = yield ~ olsenP)
-  
-  
-  pred_DGT <- predict(model_cv_DGT, test_set)
-  pred_olsenP <- predict(model_cv_olsenP, test_set)
-
-  pred_lmDGT <- predict(lm_model_DGT, test_set)
-  pred_lmolsenP <- predict(lm_model_olsenP, test_set)
-
-  
-  error_DGT <- (test_set$yield - pred_DGT)^2
-  error_olsenP <- (test_set$yield - pred_olsenP)^2
-  
-  error_lmDGT <- (test_set$yield - pred_lmDGT)^2 
-  error_lmolsenP <- (test_set$yield - pred_lmolsenP)^2
-
-  loss <- rbind(loss,cbind(error_DGT, error_olsenP, error_lmDGT, error_lmolsenP))
-  loss
-}
-loss <- as.data.frame(loss)
-names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
-apply(loss,2,mean)
-
-t.test(loss$nlDGT, loss$nlolsenP, paired =T )
-```
 
 
