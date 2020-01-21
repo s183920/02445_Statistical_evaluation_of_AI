@@ -161,10 +161,10 @@ summary(phos.model.olsenP)
 
 ```{r}
 par(mfrow=(c(3,2)))
-alfa1 <- coef(phos.model.DGT)[1]
-beta1 <- coef(phos.model.DGT)[2]
-alfa2 <- coef(phos.model.olsenP)[1]
-beta2 <- coef(phos.model.olsenP)[2]
+alfa_DGT <- coef(phos.model.DGT)[1]
+beta_DGT <- coef(phos.model.DGT)[2]
+alfa_olsenP <- coef(phos.model.olsenP)[1]
+beta_olsenP <- coef(phos.model.olsenP)[2]
 alfa3 <- coef(phos.model.DGT_mean)[1]
 beta3 <- coef(phos.model.DGT_mean)[2]
 alfa4 <- coef(phos.model.olsenP_mean)[1]
@@ -217,15 +217,84 @@ data_plot
   
 ```
 
+### Parametric bootstrapping - Konfidensintervaller for bestemmelse af parametrene
+```{r}
+N <- 10000
+set.seed(2020)
+residuals_DGT <- summary(phos.model.DGT)$residuals
+residuals_olsenP <- summary(phos.model.DGT)$residuals
 
-## Predicting yield
+pred_DGT <- predict(phos.model.DGT)
+pred_olsenP <- predict(phos.model.olsenP)
+BS_coef <- c()
+for (i in 1:N){
+  print(i)
+  BS_DGT <- pred_DGT + sample(residuals_DGT, replace = T)
+  BS_olsenP<- pred_olsenP + sample(residuals_olsenP, replace = T)
+  
+  BS_DGT2 <- pred_DGT + rnorm(36, 0, sqrt(mean(l$residuals^2)))
+  BS_olsenP2 <- pred_olsenP + rnorm(36, 0, sqrt(mean(l$residuals^2)))
+  
+  data_BS <- data.frame(BS_DGT = BS_DGT, BS_DGT2 = BS_DGT2, BS_olsenP = BS_olsenP, BS_olsenP2 = BS_olsenP2, DGT = data_fos$DGT, olsenP = data_fos$olsenP)
+  
+  
+  phos.model.DGT_BS <- nls(BS_DGT ~ alfa * DGT/(beta + DGT), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  phos.model.olsenP_BS <- nls(BS_olsenP ~ alfa * olsenP/(beta + olsenP), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+    phos.model.DGT_BS2 <- nls(BS_DGT2 ~ alfa * DGT/(beta + DGT), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  phos.model.olsenP_BS2 <- nls(BS_olsenP2 ~ alfa * olsenP/(beta + olsenP), data = data_BS, start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
+  
+  
+  BS_coef <- rbind(BS_coef, c(coef(phos.model.DGT_BS),coef(phos.model.olsenP_BS), coef(phos.model.DGT_BS2), coef(phos.model.olsenP_BS2)))
+  
+  
+}
+BS_coef <- as.data.frame(BS_coef)
+names(BS_coef) <- c("alfa_DGT","beta_DGT","alfa_olsenP","beta_olsenP","alfa_DGT2","beta_DGT2","alfa_olsenP2","beta_olsenP2")
+par(mfrow=c(2,2))
+hist(BS_coef$alfa_DGT2)
+abline(v = alfa_DGT, col = 3)
+hist(BS_coef$beta_DGT2)
+abline(v = beta_DGT, col = 3)
+hist(BS_coef$alfa_olsenP2)
+abline(v = alfa_olsenP, col = 3)
+hist(BS_coef$beta_olsenP2)
+abline(v = beta_olsenP, col = 3)
 
-Test errorrate med leave one out cross validation
+CIs <- data.frame(cbind(rbind(quantile(BS_coef$alfa_DGT, c(0.025, 0.975)), 
+quantile(BS_coef$beta_DGT, c(0.025, 0.975)),
+quantile(BS_coef$alfa_olsenP, c(0.025, 0.975)),
+quantile(BS_coef$beta_olsenP, c(0.025, 0.975))), 
+rbind(quantile(BS_coef$alfa_DGT2, c(0.025, 0.975)), 
+quantile(BS_coef$beta_DGT2, c(0.025, 0.975)),
+quantile(BS_coef$alfa_olsenP2, c(0.025, 0.975)),
+quantile(BS_coef$beta_olsenP2, c(0.025, 0.975)))),
+row.names = c("alfa_DGT","beta_DGT", "alfa_olsenP", "beta_olsenP"))
+names(CIs) <- c("Residual 2.5 %", "Residual 97.5 %","Normal 2.5 %", "Normal 97.5 %")
+CIs
+
+plot(predict(phos.model.DGT) + rnorm(36, 0, sqrt(mean(l$residuals^2))) ~ data_fos$DGT)
+l$residuals
+mean(l$residuals^2)
+plot(l$residuals)
+plot(l$residuals[-36] ~ l$residuals[-1])
+cor(l$residuals[-36], l$residuals[-1])
+
+```
+
+
+
+#  Predicting Yield
+## "Leave 4 out" - cross validation
+Bestemmere MSE for begge modeller ved cross validation, hvor i hvert fold udelukkes en location
 
 ```{r}
-data_CV <- data_grouped
+data_CV <- data_fos
+level <- levels(data_CV$location)
+N <- length(level)
 
-N <- nrow(data_CV)
 s <- sample(N)
 K_fold <- N
 
@@ -233,13 +302,12 @@ K_fold <- N
 accuracy <- c()
 random_index <- split(sample(c(1:N),N), c(1:K_fold))
 loss <- c()
-for (i in c(1:K_fold)){
-  f <- c(1:K_fold)[-i]
-  train_index <- Reduce(c,random_index[f])
-  test_index <- Reduce(c,random_index[i])
 
-  train_set <- data_CV[train_index,]
-  test_set <- data_CV[test_index,]
+for (i in c(1:K_fold)){
+
+
+  train_set <- subset(data_CV, location != level[i])
+  test_set <- subset(data_CV, location == level[i])
   model_cv_DGT <- phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = train_set,
                         start = list(alfa = 90 , beta = 1))
   
@@ -252,9 +320,10 @@ for (i in c(1:K_fold)){
   
   pred_DGT <- predict(model_cv_DGT, test_set)
   pred_olsenP <- predict(model_cv_olsenP, test_set)
-  
+
   pred_lmDGT <- predict(lm_model_DGT, test_set)
   pred_lmolsenP <- predict(lm_model_olsenP, test_set)
+
   
   error_DGT <- (test_set$yield - pred_DGT)^2
   error_olsenP <- (test_set$yield - pred_olsenP)^2
@@ -262,38 +331,44 @@ for (i in c(1:K_fold)){
   error_lmDGT <- (test_set$yield - pred_lmDGT)^2 
   error_lmolsenP <- (test_set$yield - pred_lmolsenP)^2
 
-  loss <- rbind(loss,c(error_DGT, error_olsenP, error_lmDGT, error_lmolsenP))
-  
+  loss <- rbind(loss,cbind(error_DGT, error_olsenP, error_lmDGT, error_lmolsenP))
+  loss
 }
 loss <- as.data.frame(loss)
 names(loss) <- c("nlDGT", "nlolsenP", "lmDGT", "lmolsenP")
 apply(loss,2,mean)
 
+t.test(loss$nlDGT, loss$nlolsenP, paired =T )
 Z <- loss$nlDGT - loss$nlolsenP
-
-loss$nlDGT
-t.test(Z)
-t.test(loss$nlDGT, loss$nlolsenP, paired =T)
 qqnorm(Z)
 qqline(Z)
 
-loss$nlDGT
-loss$nlolsenP
-t.test(loss$nlDGT, loss$nlolsenP, paired =T)
+loss
+qqnorm(loss$nlolsenP)
+qqline(loss$nlolsenP)
+t.test(Z)
+214
+
+mean(loss$nlDGT) + sd(loss$nlDGT)/sqrt(36) * qt(0.975, 35)
 ```
 
-### Bootstrap - loss
 
+### Bootstrapping for MSE confidence intervals
 Difference in performance with Michaelis Menten fitted to DGT vs olsenP
 Non parametric bootstrapping. Sampler fra forskel i loss af de to modeller. Udregner mean af disse forskelle og bestemmer konfidens intervaller.
-
 ```{r}
-z_bootstrap <- apply( replicate(10000, sample(Z, replace = T)), 2, mean)
-hist(z_bootstrap)
-abline(v = mean(Z))
-alfa <- 0.05
-quantile(z_bootstrap, c(alfa/2,1-alfa/2))
+a <- 0.05
+bootstap_DGT <- replicate(10000,mean(sample(loss$nlDGT, replace = T)))
+bootstap_olsenP <- replicate(10000,mean(sample(loss$nlolsenP, replace = T)))
+bootstrap_Z <- replicate(10000,mean(sample(Z, replace = T)))
+CIs_MSE <- data.frame(rbind(
+quantile(bootstap_DGT, c(a/2, 1-a/2)),
+quantile(bootstap_olsenP, c(a/2, 1-a/2)),
+quantile(bootstrap_Z, c(a/2, 1-a/2))), row.names = c("MSE_DGT","MSE_olsenP","MSE_diff"))
+names(CIs_MSE) <- c("2.5%","97.5%")
+CIs_MSE
 ```
+
 
 ### Rank Sum Test 
 
@@ -375,50 +450,66 @@ t.test(loss$nlDGT, loss$nlolsenP, paired =T )
 
 # Influence of phosphorous
 
-## Permutation test
+
+## Permutation - med hensyn til grupper ... 
 
 ```{r}
-data_permutation <- data_fos
+set.seed(1997)
 n <- 1000
-results_DGT <- c()
-results_olsenP <- c()
-results_DGT_LM <- c()
-results_olsenP_LM <- c()
+data_permutation <- data_fos
+
+permutation_list <- split(data_permutation$yield, data_permutation$location)
+
+results <- c()
 
 for (i in 1:n){
-  permutation <- sample(nrow(data_permutation))
+  permutation <- sample(9)
+  data_permutation$yield = unlist(permutation_list[permutation])
+  phos.model.DGT_perm <- nls(yield ~ alfa * DGT/(beta + DGT) , data = data_permutation,
+                        start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T, minFactor = 0))
   
-  phos.model.DGT_perm <- nls(yield[permutation] ~ alfa * DGT/(beta + DGT) , data = data_permutation,
-                        start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
-
-  phos.model.olsenP_perm <- nls(yield[permutation] ~ alfa * olsenP/(beta + olsenP) , data = data_permutation,
+  phos.model.olsenP_perm <- nls(yield ~ alfa * olsenP/(beta + olsenP) , data = data_permutation,
                             start = list(alfa = 90 , beta = 1), nls.control(warnOnly = T))
   
+  lm_model_DGT_perm <- lm(data = data_permutation, formula = yield ~ DGT)
+  lm_model_olsenP_perm <- lm(data = data_permutation, formula = yield ~ olsenP)
+
   
-  phos.model.DGT_lm_perm <- lm(yield[permutation] ~ DGT, data = data_permutation)
-  phos.model.olsenP_lm_perm <- lm(yield[permutation] ~ olsenP, data = data_permutation)
-  
-  results_DGT <- rbind(results_DGT, coef(phos.model.DGT_perm))
-  results_olsenP <- rbind(results_olsenP, coef(phos.model.olsenP_perm))
-  results_DGT_LM <- rbind(results_DGT_LM, coef(phos.model.DGT_lm_perm))
-  results_olsenP_LM <- rbind(results_olsenP_LM, coef(phos.model.olsenP_lm_perm))
+  results <- rbind(results, c(coef(phos.model.DGT_perm), coef(phos.model.olsenP_perm), coef(lm_model_DGT_perm), coef(lm_model_olsenP_perm)))
+
 }
-
-par(mfrow = c(1,2))
-hist(results_DGT[,1])
-abline(v = alfa1)
-
-hist(results_DGT[,2])
-abline(v = beta1)
-
-hist(results_DGT_LM[,1])
-abline(v = coef(phos.model.DGT_lm[1]))
+results <- as.data.frame(results)
+names(results) <- c("a-DGT", "b-DGT", "a-olsenP", "b-olsenP", "int. DGT", "slope DGT", "int. olsenP", "slope olsenP")
 
 
-mean(results_DGT[,2])
-alfa1
-beta1
+P_a_perm_DGT <- 2*mean(alfa_DGT < results$`a-DGT`)
+P_a_perm_olsenP <- 2*mean(alfa_olsenP < results$`a-olsenP`)
+P_b_perm_DGT <- 2*mean(beta_DGT < results$`b-DGT`)
+P_b_perm_olsenP <- 2*mean(beta_olsenP < results$`b-olsenP`)
+
+CI_a_DGT_perm <- quantile(results$`a-DGT`, c(a/2, 1-a/2))
+CI_a_olsenP_perm <- quantile(results$`a-olsenP`, c(a/2, 1-a/2))
+CI_b_DGT_perm <- quantile(results$`b-DGT`, c(a/2, 1-a/2))
+CI_b_olsenP_perm <- quantile(results$`b-olsenP`, c(a/2, 1-a/2))
+
+par(mfrow = c(2,2))
+hist(results$`a-DGT`)
+abline(v = c(CI_a_DGT_perm, alfa_DGT), col = c(2,2,1))
+
+hist(results$`a-olsenP`)
+abline(v = c(CI_a_olsenP_perm,alfa_olsenP), col = c(2,2,1))
+
+hist(results$`b-DGT`)
+abline(v = c(CI_b_DGT_perm,beta_DGT), col = c(2,2,1))
+
+hist(results$`b-olsenP`)
+abline(v = c(CI_b_olsenP_perm,beta_olsenP), col = c(2,2,1))
+
+p_vals_perm <- data.frame(a_DGT = c( CI_a_DGT_perm, alfa_DGT,P_a_perm_DGT), b_DGT = c( CI_b_DGT_perm, beta_DGT,P_b_perm_DGT), a_olsenP = c( CI_a_olsenP_perm,alfa_olsenP,P_a_perm_olsenP), b_olsenP = c(CI_b_olsenP_perm, beta_olsenP,P_b_perm_olsenP), row.names =c("2.5 %", "97.5 % ", "observed value", "p-value"))
+p_vals_perm
 ```
+
+
 
 
 ```{r}
