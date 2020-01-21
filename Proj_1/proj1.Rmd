@@ -154,7 +154,7 @@ cat("All trajectories where each color is a person: ")
 rgl::plot3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[data_long$person], lwd = .5)
 rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[data_long$person], lwd = .5)
 rgl::legend3d("topright", legend = paste0(1:10), pch = c(1,16), col = rainbow(10), cex=.3, inset=c(0.002), title = "Person")
-rgl::play3d(spin3d(axis=c(0,0,1), rpm=10), duration=20)
+rgl::play3d(rgl::spin3d(axis=c(0,0,1), rpm=10), duration=20)
 
 
 
@@ -284,8 +284,24 @@ for (i in c(1:K_fold)){
 }
 
 loss <- as.data.frame(loss)
+mean_loss <-apply(loss,1,mean)
 
-plot(apply(loss,1,mean))
+plot(mean_loss)
+
+data.frame(Loss = mean_loss, k = K, min = mean_loss == min(mean_loss)) %>% 
+  ggplot(aes(x = k, y = Loss)) +
+    geom_point(aes(col = min), size = 3.5) +
+    geom_line() +
+    theme(legend.title = element_blank()) +
+    guides(col = F, size = F) +
+    scale_x_continuous(breaks = K) +
+    annotate("text", x = 8, 
+                y = 0.375, label = "Min(Loss)", angle=0, size=3, 
+                colour='black', face="bold") +
+    geom_segment(aes(x = 7, y = 0.375, xend = 3, yend = 0.36), size=.5,arrow = arrow(length = unit(0.5, "cm"))) +
+  geom_segment(aes(x = 7, y = 0.375, xend = 1, yend = 0.36), size=.5,arrow = arrow(length = unit(0.5, "cm")))
+    
+
 ```
 
 
@@ -392,6 +408,17 @@ mean_curves <- as.data.frame(mean_curves)
 
 cat("Plot of the mean curves")
 rgl::plot3d(mean_curves$x, mean_curves$y, mean_curves$z, type = 'p', col = mean_curves$V1, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+
+names(mean_curves) <- c("Experiment", "Time", "X", "Y", "Z")
+combinations <- combn(1:16, 2)
+n <- ncol(combinations)
+dist_df <- c()
+for (i in 1:n){
+  curve1 <- subset(mean_curves, Experiment == combinations[1,i])[,c(3:5)]
+  curve2 <- subset(mean_curves, Experiment == combinations[2,i])[,c(3:5)]
+  distance <- c(combinations[1,i], combinations[2,i], sqrt(apply((curve1 - curve2)^2, 1, sum)))
+  dist_df <- rbind(dist_df, distance)
+}
   
 ```
 
@@ -407,18 +434,6 @@ Konfidens intervaller. \
 
 
 ```{r}
-names(mean_curves) <- c("Experiment", "Time", "X", "Y", "Z")
-combinations <- combn(1:16, 2)
-n <- ncol(combinations)
-dist_df <- c()
-for (i in 1:n){
-  curve1 <- subset(mean_curves, Experiment == combinations[1,i])[,c(3:5)]
-  curve2 <- subset(mean_curves, Experiment == combinations[2,i])[,c(3:5)]
-  distance <- c(combinations[1,i], combinations[2,i], sqrt(apply((curve1 - curve2)^2, 1, sum)))
-  dist_df <- rbind(dist_df, distance)
-}
-
-
 dist_df <- as.data.frame(dist_df)
 
 p_vals <- c()
@@ -475,6 +490,8 @@ diff_data <- data_long %>%
 cat("Differences between max and mix for each rep")
 head(diff_data)
 
+
+bartlett.test(data = diff_data, x ~ experiment)
 
 lm_x <- lm(data = diff_data, x ~ experiment)
 lm_y <- lm(data = diff_data, y ~ experiment)
