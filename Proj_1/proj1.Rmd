@@ -1,6 +1,6 @@
 ---
 title: "Project1"
-author: "Peter, Lukas & Rasmus"
+author: "Peter"
 date: "1/12/2020"
 output: 
   html_document:
@@ -145,8 +145,13 @@ All trajectories from all experiments
 ```{r all_trajectories}
 cat("All trajectories where each color is an experiment: ")
 
+rgl::par3d(windowRect = c(150, 150, 612, 612))
 rgl::plot3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = data_long$experiment, lwd = .5, legend = T)
 rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = data_long$experiment, lwd = .5, legend = T)
+rgl::legend3d("topright", legend = paste0(1:10), pch = c(1,16), col = rainbow(10), cex=3, inset=c(0.002), title = "Person")
+hypervolume::hypervolume_save_animated_gif(image.size = 400, 
+                              axis = c(0, 0, 1), rpm = 4, duration = 60, fps = 20, 
+                              file.name = "movie_test")
 
 
 
@@ -154,12 +159,11 @@ cat("All trajectories where each color is a person: ")
 rgl::plot3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[data_long$person], lwd = .5)
 rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[data_long$person], lwd = .5)
 rgl::legend3d("topright", legend = paste0(1:10), pch = c(1,16), col = rainbow(10), cex=.3, inset=c(0.002), title = "Person")
-rgl::play3d(rgl::spin3d(axis=c(0,0,1), rpm=10), duration=20)
+#rgl::play3d(rgl::spin3d(axis=c(0,0,1), rpm=10), duration=20)
 
-
-
-rainbow(10)
-
+hypervolume::hypervolume_save_animated_gif(image.size = 400, 
+                              axis = c(0, 0, 1), rpm = 4, duration = 15, fps = 10, 
+                              file.name = "movie_test")
 ```
 
 
@@ -300,7 +304,8 @@ data.frame(Loss = mean_loss, k = K, min = mean_loss == min(mean_loss)) %>%
                 colour='black', face="bold") +
     geom_segment(aes(x = 7, y = 0.375, xend = 3, yend = 0.36), size=.5,arrow = arrow(length = unit(0.5, "cm"))) +
   geom_segment(aes(x = 7, y = 0.375, xend = 1, yend = 0.36), size=.5,arrow = arrow(length = unit(0.5, "cm")))
-    
+
+ggsave("CV_KNN.png") 
 
 ```
 
@@ -423,6 +428,9 @@ for (i in 1:n){
 ```
 
 
+
+
+
 ### t-test between all experiments
 
 Mange one sample t-test, hvor længden imellem hvert punkt i hvert eksperiment sammenlignes.
@@ -519,5 +527,114 @@ p_vals_anova
 
 xtable::xtable(p_vals_anova)
 
+anova_z
+
 ```
+
+# Animated plots for presentation
+
+Plot mean curve of experiments
+
+```{r}
+rgl::par3d(windowRect = c(50, 50, 750, 650))
+rgl::plot3d(mean_curves$X, mean_curves$Y, mean_curves$Z, type = 'p', col = rainbow(16)[mean_curves$Experiment], lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z', size = 1)
+#rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[mean_curves$V1], lwd = .5, legend = T)
+rgl::legend3d("right", legend = paste0(1:16), pch = c(1:16), col = rainbow(16), cex=1, inset=c(0.01), title = "Experiment")
+rgl::pch3d(mean_curves$X, mean_curves$Y, mean_curves$Z, c(1:16)[mean_curves$Experiment],  col = rainbow(16)[mean_curves$Experiment], cex = .2)
+
+
+#rgl::play3d(rgl::spin3d(axis=c(0,0,1), rpm=3), duration=30)
+#hypervolume::hypervolume_save_animated_gif(image.size = 500, axis = c(0, 0, 1), rpm = 3, duration = 20, fps = 10, file.name = "pr_experiment")
+
+```
+
+Plot mean curve of person for experiment 5
+
+```{r}
+mean_curve_exp5_person <-data_long_exp5 %>% 
+  dplyr::group_by(person, time) %>% 
+  dplyr::summarise_if(is.numeric, mean)
+
+rgl::par3d(windowRect = c(50, 50, 750, 650))
+rgl::plot3d(mean_curve_exp5_person$x, mean_curve_exp5_person$y, mean_curve_exp5_person$z, type = 'p', col = rainbow(10)[mean_curve_exp5_person$person], lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z', size = 1)
+#rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[mean_curves$V1], lwd = .5, legend = T)
+rgl::legend3d("right", legend = paste0(1:10), pch = c(1:10), col = rainbow(16), cex=1, inset=c(0.01), title = "Person")
+rgl::pch3d(mean_curve_exp5_person$x, mean_curve_exp5_person$y, mean_curve_exp5_person$z, c(1:10)[mean_curve_exp5_person$person],  col = rainbow(10)[mean_curve_exp5_person$person], cex = .2)
+
+
+#rgl::play3d(rgl::spin3d(axis=c(0,0,1), rpm=3), duration=30)
+#hypervolume::hypervolume_save_animated_gif(image.size = 500, axis = c(0, 0, 1), rpm = 3, duration = 20, fps = 10, file.name = "pr_person_exp5")
+```
+
+
+
+Mean curve of experiment 5 in 2D
+
+```{r}
+mean_curve_exp5 <- data_long_exp5 %>% 
+  dplyr::group_by(time) %>% 
+  dplyr::summarise_if(is.numeric, mean) %>% 
+  dplyr::mutate(time = as.numeric(time))
+
+
+
+animation::saveGIF({
+  for (i in mean_curve_exp5$time){
+    d <- mean_curve_exp5 %>% dplyr::filter(time <= i)
+    
+    p1 <- ggplot(d, aes(x = x, y = y)) + 
+      geom_point() +
+      xlim(floor(min(mean_curve_exp5$x)), ceiling(max(mean_curve_exp5$x))) +
+      ylim(floor(min(mean_curve_exp5$y)), ceiling(max(mean_curve_exp5$y))) 
+    
+    
+    p2 <- ggplot(d, aes(x = x, y = z)) + 
+      geom_point() +
+      xlim(floor(min(mean_curve_exp5$x)), ceiling(max(mean_curve_exp5$x))) +
+      ylim(floor(min(mean_curve_exp5$z)), ceiling(max(mean_curve_exp5$z)))
+    
+    p3 <- ggplot(d, aes(x = y, y = z)) + 
+      geom_point() +
+      xlim(floor(min(mean_curve_exp5$y)), ceiling(max(mean_curve_exp5$y))) +
+      ylim(floor(min(mean_curve_exp5$z)), ceiling(max(mean_curve_exp5$z)))
+    
+    
+    
+    p <- gridExtra::grid.arrange(p1, p2, p3, ncol = 3, top = grid::textGrob("Mean curve of experiment 5", gp=grid::gpar(fontsize=20,font=3)))
+   
+
+    print(p)
+    
+  }
+}, movie.name = "mean_curve_exp5.gif", interval = 0.1, ani.width = 800, ani.height = 400)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
