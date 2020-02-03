@@ -1,0 +1,545 @@
+---
+title: "Project1"
+author: "Peter, Lukas & Rasmus"
+date: "1/12/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+#set seed
+set.seed(-1825)
+
+# load packages
+library(magrittr)
+library(ggplot2)
+```
+
+
+
+#DATA
+
+## Loading data
+
+```{r dataload}
+data <- get(load("armdata.Rdata"))
+
+```
+
+## Rename data
+
+```{r rename_data}
+names(data) <- paste0("experiment_", 1:16)
+
+for (expe in c(1:length(data))){
+  names(data[[expe]]) <- paste0("person_", 1:10)
+  for (per in c(1:length(data[[expe]]))) {
+    names(data[[expe]][[per]]) <- paste0("repetion_", 1:10)
+    for (rep in c(1:length(data[[expe]][[per]]))) {
+      colnames(data[[expe]][[per]][[rep]]) <- c("x", "y", "z")
+    }
+  }
+}
+
+
+```
+
+## Data long
+
+Reads data as a "long" matrix with 7 columns - one with experiment, one with person, one with repetition, one with time and three with x, y and z.
+
+NA's are removed by inserting the value from the next one in the row, as we are looking at trajectories and these two values therefore must be close to each other.
+
+```{r data_long}
+data_long <- as.data.frame(data)
+
+data_long <- data_long %>%
+  tidyr::gather(key = "col_name", value = "value") %>%
+  tidyr::separate(col_name, c("experiment", "person", "repetition", "direction"), sep = "\\.") %>%
+  dplyr::mutate(experiment = as.numeric(stringr::str_remove(string = experiment, pattern = ".*\\_"))) %>%
+  dplyr::mutate(person = as.numeric(stringr::str_remove(string = person, pattern = ".*\\_"))) %>%
+  dplyr::mutate(repetition = as.numeric(stringr::str_remove(string = repetition, pattern = ".*\\_"))) %>%
+  dplyr::mutate(time = rep(1:100, dim(data_long)[2])) %>% 
+  dplyr::mutate(experiment = as.factor(experiment), 
+                person = as.factor(person), 
+                repetition = as.factor(repetition),
+                time = as.factor(time)) %>% 
+  tidyr::spread(direction, value)
+
+data_long[, c("x", "y", "z")] <- lapply(data_long[, c("x", "y", "z")], fromLast = T, zoo::na.locf)  #replace NA's with the next observation
+
+
+cat("Head of data long")
+head(data_long)
+cat("Dimensions of data long: ", dim(data_long))
+
+```
+
+### Summary of data
+
+```{r data_summary}
+summary(data_long)
+str(data_long)
+```
+
+
+## Data wide
+
+Reads data as a "wide" matrix with 302 columns, one with person, one with repetition and 300 with x, y and z
+
+```{r data_wide}
+data_wide <- data_long %>%
+  tidyr::gather(direction, value, x, y, z) %>% 
+  dplyr::mutate(experiment = as.numeric(experiment), person = as.numeric(person), repetition = as.numeric(repetition)) %>% 
+  tidyr::unite(position, direction, time, sep = "_") %>%
+  tidyr::spread(position, value) %>%
+  dplyr::arrange(experiment, person, repetition) %>%
+  dplyr::mutate(experiment = as.factor(experiment), person = as.factor(person), repetition = as.factor(repetition))
+
+data_wide <- data_wide[,gtools::mixedorder(colnames(data_wide))]
+
+cat("Head of data long")
+head(data_wide)
+cat("Dimensions of data long: ", dim(data_wide))
+
+```
+
+## Data for experiment 5
+
+```{r data_exp5}
+data_exp5 <- data[["experiment_5"]]
+data_long_exp5 <- data_long %>% dplyr::filter(experiment == 5)
+data_wide_exp5 <- data_wide %>% dplyr::filter(experiment == 5) %>% dplyr::select(-experiment)
+
+cat("Head of data long for experiment 5, with the dimensions: ", dim(data_long_exp5))
+head(data_long_exp5)
+cat("\nHead of data wide for experiment 5, with the dimensions: ", dim(data_wide_exp5))
+head(data_wide_exp5)
+```
+
+## Plots of data
+
+### One repetition
+
+Plot of the first repetition for person 1 in experiment 5
+
+```{r single_rep}
+rgl::plot3d(data_exp5$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+rgl::lines3d(data_exp5$person_1$repetion_1, type = 'p', col = heat.colors(1000), lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+
+
+data_exp5$person_1$repetion_1
+
+```
+
+### Multiple repetions
+
+All trajectories from all experiments
+
+```{r all_trajectories}
+cat("All trajectories where each color is an experiment: ")
+
+rgl::plot3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = data_long$experiment, lwd = .5, legend = T)
+rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = data_long$experiment, lwd = .5, legend = T)
+
+
+
+cat("All trajectories where each color is a person: ")
+rgl::plot3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[data_long$person], lwd = .5)
+rgl::lines3d(x = data_long$x, y = data_long$y, z = data_long$z, xlab="x", ylab="y", zlab="z", col = rainbow(10)[data_long$person], lwd = .5)
+rgl::legend3d("topright", legend = paste0(1:10), pch = c(1,16), col = rainbow(10), cex=.3, inset=c(0.002), title = "Person")
+rgl::play3d(spin3d(axis=c(0,0,1), rpm=10), duration=20)
+
+
+
+rainbow(10)
+
+```
+
+
+```{r}
+library(rgl)
+x <- data_long_exp5$x
+y <- data_long_exp5$y
+z <- data_long_exp5$z
+color <- rainbow(10)[data_long$person]
+
+
+open3d()
+# Needs to be a bigger window than the default
+par3d(windowRect = c(150, 150, 612, 612))
+Sys.sleep(0.1) # Allow sluggish window managers to catch up
+parent <- currentSubscene3d()
+mfrow3d(2, 3)
+bgplot3d(plot(x, y, col = color))
+next3d(reuse = FALSE)
+bgplot3d(plot(x, z, col = color))
+next3d(reuse = FALSE)
+bgplot3d(plot(y, z, col = color))
+next3d(reuse = F)
+plot3d(x, y, z, col = color)
+next3d(reuse = FALSE)
+plot3d(x, y, z, col = color)
+lines3d(x, y, z, col = color)
+next3d(reuse = F)
+legend3d("center", paste0(1:10), pch = c(1, 16), title = "Person", col = rainbow(10))
+useSubscene3d(parent)
+```
+
+
+Trajectories for experiment 5
+
+```{r trajectories_exp5}
+cat("Trajectories for experiment 5 where each color is a person: ")
+rgl::lines3d(x = data_long_exp5$x, y = data_long_exp5$y, z = data_long_exp5$z, col = data_long_exp5$person)
+```
+
+### 2D representation
+
+```{r}
+ggplot(data_long_exp5, aes(x = x, y = y, col = person)) +
+  geom_line()
+```
+
+
+# 1. Machine learning
+
+## Standardization of data wide
+
+```{r standardisation}
+data_wide_exp5_norm <- data_wide_exp5
+data_wide_exp5_norm[,-c(1, 2)] <- scale(data_wide_exp5[,-c(1, 2)])
+
+
+boxplot(data_wide)
+```
+
+
+##  PCA - test
+
+### Method 1: SVD
+
+```{r svd}
+svd <- svd(data_wide_exp5_norm[,3:302])
+PC <- as.matrix(data_wide_exp5_norm[,3:302]) %*% svd$v
+
+# plot
+ggplot(data = as.data.frame(PC), aes(x = V1, y = V2, col = data_wide_exp5$person, legend = "Person")) + 
+  geom_point() +
+  scale_colour_discrete(name = "Person")
+
+
+cat("Head of diagonals from SVD: \n")
+head(svd$d)
+
+```
+
+### Method 2: built in pca
+
+```{r pca}
+pca <- prcomp(x = data_wide_exp5[,-c(1,2)], scale. = T, center = T)
+pca_summary <- summary(pca)
+
+cat("Importance of the first 10 principal components")
+pca_summary$importance[,1:10]
+
+```
+
+
+# Cross-Validation KNN (1 Neighbour) & Logistic Regression
+*Korrekt brug af McNemar? Binomial eller med continuity correction * \
+*Konfidens intervaller - Beta funktion?*
+
+```{r determine_k}
+set.seed(-1825)
+data_CV <- data_wide_exp5
+
+N <- nrow(data_CV)
+s <- sample(N)
+K_fold <- N
+
+K <- c(1:20)
+
+loss <- matrix(rep(NA, length(K) * K_fold), nrow = length(K))
+random_index <- sample(c(1:100), 100)
+
+ 
+for (i in c(1:K_fold)){
+  print(paste0("Fold ", i))
+  
+  train_set <- data_CV[random_index[-i],]
+  test_set <- data_CV[random_index[i],]
+  
+  for (k in K){
+    pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = k)
+    loss_KNN <- mean(pred_KNN != test_set$person)
+    loss[k,i] <- loss_KNN
+  }
+}
+
+loss <- as.data.frame(loss)
+
+plot(apply(loss,1,mean))
+```
+
+
+```{r CV_models}
+set.seed(-1825)
+data_CV <- data_wide_exp5
+set.seed(-1825)
+N <- nrow(data_CV)
+s <- sample(N)
+K_fold <- N
+
+if ("acc_-1825.rds" %in% list.files()){
+  accuracy <- readRDS("acc_-1825.rds")
+} else{
+  data_CV <- data_wide_exp5
+
+  N <- nrow(data_CV)
+  s <- sample(N)
+  K_fold <- N
+  
+  K <- c(1:20)
+  
+  accuracy <- c()
+  random_index <- sample(c(1:100), 100)
+   
+  for (i in c(1:K_fold)){
+    print(paste0("Fold ", i))
+    f <- c(1:K_fold)[-i]
+    train_set <- data_CV[random_index[-i],]
+    test_set <- data_CV[random_index[i],]
+    
+    pred_KNN <- class::knn(train_set[,-c(1,2)], test_set[,-c(1,2)], train_set$person, k = 1)
+    acc_KNN <- pred_KNN == test_set$person
+    
+    LogReg <- nnet::multinom(data = train_set[,-2], formula = person ~ ., MaxNWts = 10000)
+    pred_LogReg <- predict(LogReg, test_set[,-c(1,2)])
+    acc_LogReg <- pred_LogReg == test_set$person
+  
+    
+    accuracy <- rbind(accuracy, cbind(acc_KNN, acc_LogReg))
+
+  
+  }
+  accuracy <- as.data.frame(accuracy)
+  
+  saveRDS(accuracy, "acc_-1825.rds")
+}
+
+
+apply(accuracy,2,mean)
+
+accuracy
+```
+
+
+
+## McNemar
+
+```{r evaluating_models}
+n_11 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == T)
+n_12 <- sum(accuracy$acc_KNN == T & accuracy$acc_LogReg == F)
+n_21 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == T)
+n_22 <- sum(accuracy$acc_KNN == F & accuracy$acc_LogReg == F)
+contingency <- matrix(c(n_11, n_21, n_12, n_22),nrow = 2)
+
+contingency
+
+mc_nemar_result <- mcnemar.test(contingency, correct = T)
+CI_KNN <- DescTools::BinomCI(sum(accuracy$acc_KNN), 100, method = "jeffrey")
+CI_LogReg <- DescTools::BinomCI(sum(accuracy$acc_LogReg), 100, method = "jeffrey")
+
+cat("Confidence interval for logistic regression")
+CI_LogReg
+qbeta(0.975, sum(accuracy$acc_LogReg) + 0.5, 100 - sum(accuracy$acc_LogReg)+0.5)
+
+cat("Confidence interval for KNN")
+CI_KNN
+
+cat("Result of McNemars test")
+mc_nemar_result
+cat("P-value obtained via a binomial dsitribution")
+2* pbinom(min(n_12,n_21) , n_12+n_21 , 1/2)
+```
+
+
+# 2. Statistik
+Test om der er signifikant effekt af 'experiment' på de resulterende kurver.
+
+## Mean curve 
+
+Beregner mean-curve for hvert eksperiment.
+```{r}
+mean_curves <- c()
+for (i in 1:16){
+  for (j in 1:100){
+    
+    mean_point <- apply(subset(subset(data_long, experiment == i), time == j)[,c(5:7)], 2, mean)
+    mean_curves <- rbind(mean_curves, c(i,j,mean_point))
+    
+  }
+}
+
+mean_curves <- as.data.frame(mean_curves)
+
+cat("Plot of the mean curves")
+rgl::plot3d(mean_curves$x, mean_curves$y, mean_curves$z, type = 'p', col = mean_curves$V1, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
+  
+```
+
+
+### t-test between all experiments
+
+Mange one sample t-test, hvor længden imellem hvert punkt i hvert eksperiment sammenlignes.
+Nul-hypotese: den gennemsnitlige afstande imellem punkterne i to kurver er 0.
+Resultatet giver en dataframe rækker svarene til sammenligning af samtlige kombinationer af de 16 eksperimenter.
+Konfidens intervaller. \
+*One sample t-test med afstand i mellem punkter? - Næh, det må man ikke *
+*ANOVA - Forskel i mean af X, Y og Z eksperimenterne imellem*
+
+
+```{r}
+names(mean_curves) <- c("Experiment", "Time", "X", "Y", "Z")
+combinations <- combn(1:16, 2)
+n <- ncol(combinations)
+dist_df <- c()
+for (i in 1:n){
+  curve1 <- subset(mean_curves, Experiment == combinations[1,i])[,c(3:5)]
+  curve2 <- subset(mean_curves, Experiment == combinations[2,i])[,c(3:5)]
+  distance <- c(combinations[1,i], combinations[2,i], sqrt(apply((curve1 - curve2)^2, 1, sum)))
+  dist_df <- rbind(dist_df, distance)
+}
+
+
+dist_df <- as.data.frame(dist_df)
+
+p_vals <- c()
+for (i in 1:nrow(dist_df)){
+  test <- t.test(dist_df[i, -c(1,2)])
+  p_vals <- rbind(p_vals, c(paste0(dist_df[i,1],"-", dist_df[i,2]), test$conf.int[1], test$conf.int[2], test$p.value))
+  
+}
+
+
+p_vals <- as.data.frame(p_vals)
+names(p_vals) <- c("Experiments","Lower", "Upper", "P-value")
+
+p_vals$`P-value` <- as.double(levels(p_vals$`P-value`))
+p_vals["Adjusted P-values"] <- p.adjust(p_vals$`P-value`, method = "hochberg")
+
+head(p_vals)
+plot(sort(p_vals$`Adjusted P-values`))
+```
+
+## ANOVA
+
+Boxplots and anova table
+
+```{r}
+
+par(mfrow = c(1,3))
+boxplot(data_long$x ~ data_long$experiment)
+boxplot(data_long$y ~ data_long$experiment)
+boxplot(data_long$z ~ data_long$experiment)
+
+
+model_anova <- aov(data = data_long, formula = z ~ experiment )
+summary(model_anova)
+summary.lm(model_anova)
+
+head(TukeyHSD(model_anova))
+
+```
+
+### Min-max ANOVA
+
+Each curve is compressed down to containing only the difference in its max and min in each direction. An ANOVA is then carried out for each direction. The p-values for each direction is adjusted by different measures of adjustment and put in a data frame.
+
+```{r}
+diff_data <- data_long %>% 
+  tidyr::gather(direction, value, x, y, z) %>% 
+  dplyr::group_by(experiment, person, repetition, direction) %>% 
+  dplyr::summarise(diff = max(value, na.rm = T) - min(value, na.rm = T)) %>% 
+  tidyr::spread(direction, diff) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(experiment = as.factor(experiment)) 
+  
+cat("Differences between max and mix for each rep")
+head(diff_data)
+
+
+lm_x <- lm(data = diff_data, x ~ experiment)
+lm_y <- lm(data = diff_data, y ~ experiment)
+lm_z <- lm(data = diff_data, z ~ experiment)
+
+anova_x <- anova(lm_x)
+anova_y <- anova(lm_y)
+anova_z <- anova(lm_z)
+
+anova_x
+
+p_vals_normal <- c(x = anova_x$`Pr(>F)`[1], y = anova_y$`Pr(>F)`[1], z = anova_z$`Pr(>F)`[1])
+p_vals_hoch <- p.adjust(p_vals_normal, method = "hochberg")
+p_vals_bonf <- p.adjust(p_vals_normal, method = "bonferroni")
+p_vals_BH <- p.adjust(p_vals_normal, method = "BH") #benjamini hochberg
+
+
+summary(diff_data)
+
+p_vals_anova <- data.frame(normal = p_vals_normal, hochberg = p_vals_hoch, bonferroni = p_vals_bonf, BH = p_vals_BH )
+
+rm(p_vals_normal, p_vals_hoch, p_vals_bonf, p_vals_BH )
+
+p_vals_anova
+
+xtable::xtable(p_vals_anova)
+nrow(diff_data)
+```
+```{r}
+p <- seq(0,1,0.001)
+m1 <- 69
+m2 <- 67
+n <- 100
+
+
+data.frame(p=p, MLR = dbeta(p,m1+ 0.5,n-m1+0.5), KNN =dbeta(p,m2+0.5,n-m2+0.5))%>% tidyr::gather(key, value ,MLR, KNN) %>% 
+  ggplot(aes(p, value, col = key), fill = key) + 
+  geom_ribbon(aes(ymin=0, ymax=value,fill=key), alpha = 0.5) +
+  theme(legend.title = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  xlab("Accuracy") +
+  ylab("density") +
+  ggtitle("Beta distributions for Jeffry's intervals", )
+
+
+  
+             
+beta
+dbeta(p,22.2,100-m1)
+```
+
+```{r}
+p <- seq(0,40)
+t <- 1/2
+n <- 18 + 20
+binom_data <- data.frame(p=p, Pvalue = dbinom(p,size = n, prob = t))%>% tidyr::gather(key, value, Pvalue)
+  ggplot(data = binom_data, aes(p, value)) + geom_line()+
+  geom_ribbon(data = subset(binom_data, p<18),aes(ymin=0, ymax=value,fill=key), alpha = 0.5) +
+  geom_ribbon(data = subset(binom_data, p>20),aes(ymin=0, ymax=value,fill=key), alpha = 0.5) +  
+  theme(legend.title = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  xlab("n") +
+  ylab("density") +
+  ggtitle("Binomial distribution for McNemar's test")
+  
+binom_data
+``` 
+
