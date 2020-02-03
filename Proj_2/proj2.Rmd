@@ -402,6 +402,18 @@ sum(Z_RST)
 2*mean(DGT_RS>RST)
 2*mean(olsenP_RS<RST)
 sum(1:72)
+DGT_RS <- sum(Z_RST[1:length(Z_RST)/2])
+RST <- c()
+for (i in 1:1000){
+  RST_sample <- sample(length(Z_RST))
+  RST <- c(RST,sum(RST_sample[1:length(Z_RST)/2]))
+}
+p_val <- 2*mean(DGT_RS>RST)
+
+hist(RST)
+abline(v = DGT_RS)
+p_val
+
 ```
 
 ### LEAVE 4 OUT!!!!
