@@ -516,6 +516,21 @@ Derefter laves permutationer af vektor med 1-72 og rank sum af de 36 første bes
 
 ```{r}
 Z_RST <- order(c(loss$nlDGT, loss$nlolsenP))
+DGT_RS <- sum(Z_RST[1:36])
+olsenP_RS <- sum(Z_RST[37:72])
+RST <- c()
+for (i in 1:1000){
+  RST_sample <- sample(length(Z_RST))
+  RST <- c(RST,sum(RST_sample[1:36]))
+}
+p_val <- 2*mean(DGT_RS<RST)
+p_val2 <- 2*mean(olsenP_RS<RST)
+hist(RST)
+abline(v = DGT_RS)
+sum(Z_RST)
+2*mean(DGT_RS>RST)
+2*mean(olsenP_RS<RST)
+sum(1:72)
 DGT_RS <- sum(Z_RST[1:length(Z_RST)/2])
 RST <- c()
 for (i in 1:1000){

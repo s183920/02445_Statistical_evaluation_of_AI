@@ -1,6 +1,6 @@
 ---
 title: "Project1"
-author: "Peter"
+author: "Peter, Lukas & Rasmus"
 date: "1/12/2020"
 output: 
   html_document:
@@ -431,17 +431,6 @@ mean_curves <- as.data.frame(mean_curves)
 
 cat("Plot of the mean curves")
 rgl::plot3d(mean_curves$x, mean_curves$y, mean_curves$z, type = 'p', col = mean_curves$V1, lwd = 2, xlab = 'x', ylab = 'y', zlab = 'z')
-
-names(mean_curves) <- c("Experiment", "Time", "X", "Y", "Z")
-combinations <- combn(1:16, 2)
-n <- ncol(combinations)
-dist_df <- c()
-for (i in 1:n){
-  curve1 <- subset(mean_curves, Experiment == combinations[1,i])[,c(3:5)]
-  curve2 <- subset(mean_curves, Experiment == combinations[2,i])[,c(3:5)]
-  distance <- c(combinations[1,i], combinations[2,i], sqrt(apply((curve1 - curve2)^2, 1, sum)))
-  dist_df <- rbind(dist_df, distance)
-}
   
 ```
 
@@ -460,6 +449,18 @@ Konfidens intervaller. \
 
 
 ```{r}
+names(mean_curves) <- c("Experiment", "Time", "X", "Y", "Z")
+combinations <- combn(1:16, 2)
+n <- ncol(combinations)
+dist_df <- c()
+for (i in 1:n){
+  curve1 <- subset(mean_curves, Experiment == combinations[1,i])[,c(3:5)]
+  curve2 <- subset(mean_curves, Experiment == combinations[2,i])[,c(3:5)]
+  distance <- c(combinations[1,i], combinations[2,i], sqrt(apply((curve1 - curve2)^2, 1, sum)))
+  dist_df <- rbind(dist_df, distance)
+}
+
+
 dist_df <- as.data.frame(dist_df)
 
 p_vals <- c()
@@ -544,6 +545,47 @@ rm(p_vals_normal, p_vals_hoch, p_vals_bonf, p_vals_BH )
 p_vals_anova
 
 xtable::xtable(p_vals_anova)
+nrow(diff_data)
+```
+```{r}
+p <- seq(0,1,0.001)
+m1 <- 69
+m2 <- 67
+n <- 100
+
+
+data.frame(p=p, MLR = dbeta(p,m1+ 0.5,n-m1+0.5), KNN =dbeta(p,m2+0.5,n-m2+0.5))%>% tidyr::gather(key, value ,MLR, KNN) %>% 
+  ggplot(aes(p, value, col = key), fill = key) + 
+  geom_ribbon(aes(ymin=0, ymax=value,fill=key), alpha = 0.5) +
+  theme(legend.title = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  xlab("Accuracy") +
+  ylab("density") +
+  ggtitle("Beta distributions for Jeffry's intervals", )
+
+
+  
+             
+beta
+dbeta(p,22.2,100-m1)
+```
+
+```{r}
+p <- seq(0,40)
+t <- 1/2
+n <- 18 + 20
+binom_data <- data.frame(p=p, Pvalue = dbinom(p,size = n, prob = t))%>% tidyr::gather(key, value, Pvalue)
+  ggplot(data = binom_data, aes(p, value)) + geom_line()+
+  geom_ribbon(data = subset(binom_data, p<18),aes(ymin=0, ymax=value,fill=key), alpha = 0.5) +
+  geom_ribbon(data = subset(binom_data, p>20),aes(ymin=0, ymax=value,fill=key), alpha = 0.5) +  
+  theme(legend.title = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
+  xlab("n") +
+  ylab("density") +
+  ggtitle("Binomial distribution for McNemar's test")
+  
+binom_data
+``` 
 
 anova_z
 
