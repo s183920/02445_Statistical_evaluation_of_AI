@@ -391,6 +391,24 @@ cat("P-value obtained via a binomial dsitribution")
 2* pbinom(min(n_12,n_21) , n_12+n_21 , 1/2)
 ```
 
+```{r}
+data.frame(est = c(67, 69), lwr.ci = c(57, 59), upr.ci = c(76,77), Model = c("KNN", "MLR")) %>% 
+  ggplot(aes(Model, est)) + 
+  geom_point(col = "blue") +
+  ylim(0, 100) +
+  geom_errorbar(aes(ymin = lwr.ci, ymax = upr.ci, width = 0.1), col = "red") +
+  annotate(geom = "text", x = 1.3, y = 67, label = "67 %") +
+  annotate(geom = "text", x = 2.3, y = 69, label = "69 %") +
+  ylab("Accuracy [%]") +
+  theme(aspect.ratio = 1.65) +
+  ggtitle("Performance of the models")
+
+ggsave("accuracies.png")
+
+
+           
+```
+
 
 # 2. Statistik
 Test om der er signifikant effekt af 'experiment' på de resulterende kurver.
